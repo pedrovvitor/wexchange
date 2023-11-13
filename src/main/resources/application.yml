@@ -1,0 +1,36 @@
+server:
+  port: 8080
+  compression:
+    enabled: true #Whether response compression is enabled
+    mime-types: text/html, text/xml, text/plain, text/css, text/javascript, application/javascript, application/json #Comma-separated list of MIME types that should be compressed.
+    min-response-size: 1024 #Minimun "Content-length" value that is required for compression to be performed
+  undertow:
+    threads:
+      worker: 64 #Generally this should be reasonably high, at least 10 per CPU core: https://undertow.io/undertow-docs/undertow-docs-2.1.0/index.html#listeners-2
+#      io: 4 # One ID thread per CPU core is a reasonable default: https://undertow.io/undertow-docs/undertow-docs-2.1.0/index.html#listeners-2
+spring:
+  datasource:
+    url: jdbc:postgres://${postgres.url}/${postgres.schema}?useSSL=true&serverTimezone=UTC&characterEncoding=UTF-8
+    username: ${postgres.username}
+    password: ${postgres.password}
+    hikari:
+      auto-commit: false
+      connection-timeout: 250 # Ms config. The ideal is maintaining this low to provide a fast timeout without retaining the thread for long periods.
+      max-lifetime: 600000
+      maximum-pool-size: 20 # maintain max of 20 connections with the database, this is costly to be managed by the RDBMS. see https://github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing
+      minimum-idle: 10
+      pool-name: master
+  jpa:
+    open-in-view: false
+    show-sql: true
+    hibernate:
+      ddl-auto: none
+    properties:
+      "[hibernate.connection.provider_disables_autocommit]": true
+      # To improve the performance to the max, disable the auto-commit and the open-in-view
+      # https://vladmihalcea.com/why-you-should-always-use-hibernate-connection-provider_disables_autocommit-for-resource-local-jpa-transactions/
+
+fiscal:
+  service:
+    api:
+      endpoint: "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/od/rates_of_exchange"
