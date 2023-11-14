@@ -41,7 +41,11 @@ public class ApiUrlBuilder {
     }
 
     public ApiUrlBuilder addFilter(FieldType field, ParamComparator comparator, String value) {
-        filters.add(field.alias + comparator.alias + value);
+        if (comparator.equals(ParamComparator.IN)) {
+            filters.add(field.alias + comparator.alias + "(" + value + ")");
+        } else {
+            filters.add(field.alias + comparator.alias + value);
+        }
         return this;
     }
 
@@ -120,7 +124,8 @@ public class ApiUrlBuilder {
         LTE(":lte:"),
         GT(":gt:"),
         GTE(":gte:"),
-        EQ(":eq:");
+        EQ(":eq:"),
+        IN(":in:");
 
         private final String alias;
 

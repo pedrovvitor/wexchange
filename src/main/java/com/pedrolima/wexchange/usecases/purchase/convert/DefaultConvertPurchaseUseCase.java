@@ -4,8 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pedrolima.wexchange.api.purchase.ConvertPurchaseApiInput;
 import com.pedrolima.wexchange.api.purchase.ConvertPurchaseApiOutput;
-import com.pedrolima.wexchange.bean.exchange.ExchangeRateData;
-import com.pedrolima.wexchange.bean.exchange.ExchangeRateResponse;
+import com.pedrolima.wexchange.bean.exchange.ExchangeData;
+import com.pedrolima.wexchange.bean.exchange.FiscalDataApiResponse;
 import com.pedrolima.wexchange.entities.Purchase;
 import com.pedrolima.wexchange.exception.ExchangeRateNotFoundException;
 import com.pedrolima.wexchange.exception.PurchaseConversionException;
@@ -13,10 +13,12 @@ import com.pedrolima.wexchange.exception.ResourceNotFoundException;
 import com.pedrolima.wexchange.exception.RetryableException;
 import com.pedrolima.wexchange.integration.fiscal.ApiUrlBuilder;
 import com.pedrolima.wexchange.repositories.PurchaseRepository;
-import com.pedrolima.wexchange.util.MetricsUtils;
+import com.pedrolima.wexchange.util.CountryCurrencyUtils;
+import com.pedrolima.wexchange.util.MetricsHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.time.StopWatch;
+import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.retry.annotation.Backoff;
@@ -32,7 +34,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
+import static com.pedrolima.wexchange.integration.fiscal.ApiUrlBuilder.FieldType.COUNTRY;
 import static com.pedrolima.wexchange.integration.fiscal.ApiUrlBuilder.FieldType.COUNTRY_CURRENCY;
+import static com.pedrolima.wexchange.integration.fiscal.ApiUrlBuilder.FieldType.CURRENCY;
 import static com.pedrolima.wexchange.integration.fiscal.ApiUrlBuilder.FieldType.EFFECTIVE_DATE;
 import static com.pedrolima.wexchange.integration.fiscal.ApiUrlBuilder.FieldType.EXCHANGE_RATE;
 import static com.pedrolima.wexchange.integration.fiscal.ApiUrlBuilder.ParamComparator;
@@ -50,31 +54,33 @@ public class DefaultConvertPurchaseUseCase extends ConvertPurchaseUseCase {
 
     private final ObjectMapper mapper;
 
-    private final MetricsUtils metricsUtils;
+    private final MetricsHelper metricsHelper;
 
     @Override
     @Retryable(
             retryFor = {RetryableException.class},
             backoff = @Backoff(delay = 1000))
-    public ConvertPurchaseApiOutput execute(final ConvertPurchaseApiInput convertPurchaseApiInput) {
-        final Purchase purchase = fetchPurchase(convertPurchaseApiInput);
-        final String fullUrl = buildFullUrl(convertPurchaseApiInput, purchase);
+    public ConvertPurchaseApiOutput execute(final ConvertPurchaseApiInput input) {
+        /*
+            Given that the fiscal api has registers in capitalized first letter and all capitalized depending on date
+            I opted to provide both conditions
+         */
+        final var formattedCountryCurrency =
+                CountryCurrencyUtils.formatCurrencyName(input.countryCurrency());
+        final Purchase purchase = fetchPurchase(input);
+        final String fullUrl = buildFullUrl(formattedCountryCurrency, purchase);
         final HttpRequest request = buildHttpRequest(fullUrl);
 
         try {
             HttpResponse<String> response = sendRequest(request);
-            return processResponse(response, purchase);
+            return processResponse(response, purchase, formattedCountryCurrency);
         } catch (JsonProcessingException e) {
             log.error("Error parsing JSON response: {}", e.toString());
-            metricsUtils.incrementParsingErrorMetric();
+            metricsHelper.incrementParsingErrorMetric();
             throw new PurchaseConversionException("Error parsing API response");
         } catch (IOException | InterruptedException e) {
-            log.error("Failed to send request with fiscaldata api: {}", e.toString());
-            throw new RetryableException("IO/Interrupted Exception during request");
-        } catch (Exception e) {
-            log.error("Unhandled exception: {}", e.toString());
-            metricsUtils.incrementUnmappedExceptionMetric();
-            throw new PurchaseConversionException("An unexpected error occurred");
+            log.error("Failed to communicate with fiscaldata api: {}", e.toString());
+            throw new RetryableException("Failed to communicate with fiscaldata api");
         }
     }
 
@@ -83,18 +89,22 @@ public class DefaultConvertPurchaseUseCase extends ConvertPurchaseUseCase {
                 .orElseThrow(() -> new ResourceNotFoundException("Purchase not found for id: " + input.purchaseId()));
     }
 
-    private String buildFullUrl(ConvertPurchaseApiInput input, Purchase purchase) {
-        final var purchaseDate = purchase.getDate();
-        final var sixMonthsBefore = purchaseDate.minusMonths(6).toString();
-        final var countryCurrency = input.countryCurrency();
+    private String buildFullUrl(String formattedCountryCurrency, Purchase purchase) {
+
+        final var conversionPeriod = calculateConversionAvailablePeriod(purchase);
 
         return new ApiUrlBuilder(exchangeApiUrl)
-                .addFields(EXCHANGE_RATE, EFFECTIVE_DATE)
-                .addFilter(EFFECTIVE_DATE, ParamComparator.GTE, sixMonthsBefore)
-                .addFilter(EFFECTIVE_DATE, ParamComparator.LTE, purchaseDate.toString())
-                .addFilter(COUNTRY_CURRENCY, ParamComparator.EQ, countryCurrency) //tratar input
+                .addFields(EXCHANGE_RATE, EFFECTIVE_DATE, COUNTRY, CURRENCY)
+                .addFilter(EFFECTIVE_DATE, ParamComparator.GTE, conversionPeriod.getLeft())
+                .addFilter(EFFECTIVE_DATE, ParamComparator.LTE, conversionPeriod.getRight())
+                .addFilter(COUNTRY_CURRENCY, ParamComparator.IN, formattedCountryCurrency)
                 .addSorting(SortOrder.DESC, EFFECTIVE_DATE)
                 .build();
+    }
+
+    private Pair<String, String> calculateConversionAvailablePeriod(final Purchase purchase) {
+        final var sixMonthsBefore = purchase.getDate().minusMonths(6).toString();
+        return Pair.of(sixMonthsBefore, purchase.getDate().toString());
     }
 
     private HttpRequest buildHttpRequest(String url) {
@@ -109,41 +119,65 @@ public class DefaultConvertPurchaseUseCase extends ConvertPurchaseUseCase {
         stopWatch.start();
         HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         stopWatch.stop();
-        metricsUtils.registryExchangeRateRetrievalElapsedTime(stopWatch.getNanoTime());
+        metricsHelper.registryExchangeRateRetrievalElapsedTime(stopWatch.getNanoTime());
         return response;
     }
 
-    private ConvertPurchaseApiOutput processResponse(HttpResponse<String> response, Purchase purchase) throws JsonProcessingException {
+    private ConvertPurchaseApiOutput processResponse(
+            final HttpResponse<String> response,
+            final Purchase purchase,
+            final String formattedCountryCurrency
+    ) throws JsonProcessingException {
         if (response.statusCode() == HttpStatus.OK.value()) {
-            return parseResponseAndCalculate(response, purchase);
+            return parseResponseAndCalculate(response, purchase, formattedCountryCurrency);
         } else {
-            log.warn("Unexpected response status: {}", response.statusCode());
+            log.error("Unexpected response status: {}. {}", response.statusCode(), response);
             throw new ResponseStatusException(HttpStatus.valueOf(response.statusCode()), "Unexpected response from API");
         }
     }
 
-    private ConvertPurchaseApiOutput parseResponseAndCalculate(HttpResponse<String> response, Purchase purchase) throws JsonProcessingException {
-        ExchangeRateResponse exchangeRateResponse = mapper.readValue(response.body(), ExchangeRateResponse.class);
-        log.debug("Fiscal service api call returned with {} exchange rates", exchangeRateResponse.data().size());
-        final var mostRecentExchangeRate = extractMostRecentExchangeRate(exchangeRateResponse);
+    private ConvertPurchaseApiOutput parseResponseAndCalculate(
+            final HttpResponse<String> response,
+            final Purchase purchase,
+            final String formattedCountryCurrency
+    ) throws JsonProcessingException {
+        final FiscalDataApiResponse fiscalDataApiResponse = mapper.readValue(response.body(),
+                FiscalDataApiResponse.class);
+        log.debug("Fiscal service api call returned with {} exchange rates", fiscalDataApiResponse.data().size());
+        final var mostRecentExchangeData = extractMostRecentRegister(fiscalDataApiResponse, purchase, formattedCountryCurrency);
 
-        final var convertedAmount = calculateConvertedAmount(purchase, mostRecentExchangeRate);
+        final var convertedAmount = calculateConvertedAmount(purchase, mostRecentExchangeData.exchangeRate());
 
-        return new ConvertPurchaseApiOutput(
+        return ConvertPurchaseApiOutput.with(
                 purchase.getId(),
                 purchase.getDescription(),
                 purchase.getDate().toString(),
                 purchase.getAmount(),
-                mostRecentExchangeRate,
-                convertedAmount);
+                mostRecentExchangeData.country(),
+                mostRecentExchangeData.currency(),
+                mostRecentExchangeData.exchangeRate(),
+                mostRecentExchangeData.effectiveDate(),
+                convertedAmount
+        );
     }
 
-    private BigDecimal extractMostRecentExchangeRate(ExchangeRateResponse response) {
+    private ExchangeData extractMostRecentRegister(
+            final FiscalDataApiResponse response,
+            final Purchase purchase,
+            final String formattedCountryCurrency
+    ) {
+        final var availablePeriod = calculateConversionAvailablePeriod(purchase);
         return response.data().stream()
                 .findFirst()
-                .map(ExchangeRateData::exchangeRate)
                 .orElseThrow(() ->
-                        new ExchangeRateNotFoundException("Purchase cannot be converted to the target currency")
+                        new ExchangeRateNotFoundException(
+                                "Exchange rate not found for currencies {%s} on period %s-%s"
+                                        .formatted(
+                                                formattedCountryCurrency,
+                                                availablePeriod.getLeft(),
+                                                availablePeriod.getRight()
+                                        )
+                        )
                 );
     }
 

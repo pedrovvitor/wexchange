@@ -9,7 +9,6 @@ import com.pedrolima.wexchange.usecases.purchase.convert.ConvertPurchaseUseCase;
 import com.pedrolima.wexchange.usecases.purchase.create.CreatePurchaseUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
@@ -25,13 +24,12 @@ public class PurchaseController implements PurchaseApi {
     public ResponseEntity<CreatePurchaseApiOutput> createPurchase(final CreatePurchaseApiInput input) {
         final var output = createPurchaseUseCase.execute(input);
 
-        return ResponseEntity.created(URI.create("/purchases/" + output.id() + "/convert")).body(output);
+        return ResponseEntity.created(URI.create("/purchases/" + output.id() + "/convert?=")).body(output);
     }
 
     @Override
-    @Validated
-    public ResponseEntity<ConvertPurchaseApiOutput> convertPurchase(final String id, final String currency) {
-        final var input = ConvertPurchaseApiInput.with(id, currency);
+    public ResponseEntity<ConvertPurchaseApiOutput> convertPurchase(final String id, final String countryCurrency) {
+        final var input = ConvertPurchaseApiInput.with(id, countryCurrency);
         final var output = convertPurchaseUseCase.execute(input);
 
         return ResponseEntity.ok(output);

@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.executable.ValidateOnExecution;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -25,7 +26,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
-@RequestMapping("purchases")
+@RequestMapping("v1/purchases")
 @Tag(name = "Purchases")
 public interface PurchaseApi {
 
@@ -42,17 +43,21 @@ public interface PurchaseApi {
 
     @GetMapping(value = "{id}/convert", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    @Operation(summary = "Convert a purchase to an given currency")
+    @Operation(summary = "Convert a purchase to a given Country-Currency")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Purchase conversion was successful"),
+            @ApiResponse(responseCode = "400", description = "Invalid param/id"),
             @ApiResponse(responseCode = "404", description = "Purchase was not found"),
             @ApiResponse(responseCode = "500", description = "An internal server error was thrown")
     })
     @ValidateOnExecution
     @Validated
     ResponseEntity<ConvertPurchaseApiOutput> convertPurchase(
-            // TODO: 14/11/2023 check, validations not working as expected
+            // TODO: 14/11/2023 fix: validations not working as expected
             @PathVariable(name = "id") @NotBlank String id,
-            @RequestParam(name = "currency") @NotBlank String currency
+            @RequestParam(name = "country_currency")
+            @NotBlank
+            @Pattern(regexp = "\\w+-\\w+", message = "Country Currency must match the pattern 'Country-Currency'")
+            String countryCurrency
     );
 }

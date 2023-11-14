@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.util.Collections;
 import java.util.List;
 
 import static org.mockito.Mockito.when;
@@ -40,16 +41,17 @@ class CountryCurrencyControllerTest {
 
     @Test
     void whenCallFindAll_shouldReturnCountryCurrencies() throws Exception {
-        List<CountryCurrencyData> countryCurrencyDataList = List.of(
-                new CountryCurrencyData("USD - United States Dollar", "United States", "USD"),
-                new CountryCurrencyData("EUR - Euro", "European Union", "EUR")
+        final var countryCurrencies = List.of(
+                new CountryCurrencyData("Brazil-Real", "Brazil", "Real"),
+                new CountryCurrencyData("AFGHANISTAN-AFGHANI", "AFGHANISTAN", "AFGHANI")
         );
-        CountryCurrencyOutput expectedOutput = new CountryCurrencyOutput(countryCurrencyDataList);
+
+        final var expectedOutput = new CountryCurrencyOutput(countryCurrencies, Collections.emptyList());
 
         when(currenciesService.getAllExchangeRates())
                 .thenReturn(expectedOutput);
 
-        final var request = get("/country_currencies")
+        final var request = get("/v1/country_currencies")
                 .contentType(MediaType.APPLICATION_JSON);
 
         final var response = mockMvc.perform(request)
@@ -58,12 +60,12 @@ class CountryCurrencyControllerTest {
         response.andExpectAll(
                 status().isOk(),
                 header().string("Content-type", MediaType.APPLICATION_JSON_VALUE),
-                jsonPath("$.countryCurrencyDataList[0].country_currency_desc").value("USD - United States Dollar"),
-                jsonPath("$.countryCurrencyDataList[0].country").value("United States"),
-                jsonPath("$.countryCurrencyDataList[0].currency").value("USD"),
-                jsonPath("$.countryCurrencyDataList[1].country_currency_desc").value("EUR - Euro"),
-                jsonPath("$.countryCurrencyDataList[1].country").value("European Union"),
-                jsonPath("$.countryCurrencyDataList[1].currency").value("EUR")
+                jsonPath("$.countryCurrencies[0].country_currency_desc").value("Brazil-Real"),
+                jsonPath("$.countryCurrencies[0].country").value("Brazil"),
+                jsonPath("$.countryCurrencies[0].currency").value("Real"),
+                jsonPath("$.countryCurrencies[1].country_currency_desc").value("AFGHANISTAN-AFGHANI"),
+                jsonPath("$.countryCurrencies[1].country").value("AFGHANISTAN"),
+                jsonPath("$.countryCurrencies[1].currency").value("AFGHANI")
         );
     }
 }

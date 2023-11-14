@@ -2,11 +2,13 @@ package com.pedrolima.wexchange.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pedrolima.wexchange.api.ApiLink;
 import com.pedrolima.wexchange.bean.exchange.CountryCurrencyOutput;
 import com.pedrolima.wexchange.bean.exchange.CountryCurrencyResponse;
 import com.pedrolima.wexchange.exception.PurchaseConversionException;
+import com.pedrolima.wexchange.exception.RetryableException;
 import com.pedrolima.wexchange.integration.fiscal.ApiUrlBuilder;
-import com.pedrolima.wexchange.util.MetricsUtils;
+import com.pedrolima.wexchange.util.MetricsHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.time.StopWatch;
@@ -22,6 +24,9 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 import static com.pedrolima.wexchange.integration.fiscal.ApiUrlBuilder.FieldType.COUNTRY;
 import static com.pedrolima.wexchange.integration.fiscal.ApiUrlBuilder.FieldType.COUNTRY_CURRENCY;
@@ -39,7 +44,7 @@ public class CurrenciesService {
 
     private final ObjectMapper mapper;
 
-    private final MetricsUtils metricsUtils;
+    private final MetricsHelper metricsHelper;
 
     @Retryable(
             retryFor = {IOException.class, InterruptedException.class},
@@ -52,19 +57,28 @@ public class CurrenciesService {
             HttpResponse<String> response = sendRequest(request);
             if (response.statusCode() == HttpStatus.OK.value()) {
                 CountryCurrencyResponse exchangeRateResponse = mapper.readValue(response.body(), CountryCurrencyResponse.class);
-                return new CountryCurrencyOutput(exchangeRateResponse.data());
+
+                final var convertParams = Map.of(
+                        "{id}", "String: Purchase id (UUID format)",
+                        "country_currency", "String: Country-Currency to convert"
+                );
+
+                final var relatedLinks = List.of(
+                        ApiLink.with("convert", "/v1/purchases/{id}/convert", "GET", convertParams)
+                );
+
+                return new CountryCurrencyOutput(exchangeRateResponse.data(), relatedLinks);
             } else {
                 log.warn("Unexpected response status: {}", response.statusCode());
                 throw new ResponseStatusException(HttpStatus.valueOf(response.statusCode()), "Unexpected response from API");
             }
         } catch (JsonProcessingException e) {
             log.error("Error parsing JSON response: {}", e.toString());
-            metricsUtils.incrementParsingErrorMetric();
+            metricsHelper.incrementParsingErrorMetric();
             throw new PurchaseConversionException("Error parsing API response");
-        } catch (Exception e) {
-            log.error("Unhandled exception: {}", e.toString());
-            metricsUtils.incrementUnmappedExceptionMetric();
-            throw new PurchaseConversionException("An unexpected error occurred");
+        } catch (IOException | InterruptedException e) {
+            log.error("Failed to communicate with fiscaldata api: {}", e.toString());
+            throw new RetryableException("Failed to communicate with fiscaldata api");
         }
     }
 
@@ -73,7 +87,7 @@ public class CurrenciesService {
         stopWatch.start();
         HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         stopWatch.stop();
-        metricsUtils.registryExchangeRateRetrievalElapsedTime(stopWatch.getNanoTime());
+        metricsHelper.registryExchangeRateRetrievalElapsedTime(stopWatch.getNanoTime());
         return response;
     }
 

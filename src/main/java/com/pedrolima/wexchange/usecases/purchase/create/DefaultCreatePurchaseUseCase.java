@@ -22,12 +22,12 @@ public class DefaultCreatePurchaseUseCase extends CreatePurchaseUseCase {
         final var purchase = Purchase.newPurchase(input.description(), input.date(), input.amount());
         final var purchaseId = purchaseRepository.save(purchase).getId();
         final var convertParams = Map.of(
-                "currency", "String: Code of the currency to convert"
+                "country_currency", "String: Country-Currency to convert"
         );
 
         final var relatedLinks = List.of(
-                ApiLink.with("convert", "/purchases/" + purchaseId + "/convert", "GET", convertParams),
-                ApiLink.with("country_currencies", "/country_currencies", "GET", Collections.emptyMap())
+                ApiLink.with("convert", "/v1/purchases/" + purchaseId + "/convert", "GET", convertParams),
+                ApiLink.with("country_currencies", "/v1/country_currencies", "GET", Collections.emptyMap())
         );
 
         return CreatePurchaseApiOutput.with(purchaseId, relatedLinks);

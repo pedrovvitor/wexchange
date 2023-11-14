@@ -10,7 +10,7 @@ import java.time.Duration;
 
 @Service
 @RequiredArgsConstructor
-public class MetricsUtils {
+public class MetricsHelper {
 
     private final MeterRegistry meterRegistry;
 

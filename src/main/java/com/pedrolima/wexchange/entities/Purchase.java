@@ -19,7 +19,7 @@ public class Purchase {
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @Column(name = "description", length = 50)
+    @Column(name = "description", nullable = false, length = 50)
     private String description;
 
     @Column(name = "date", nullable = false)

@@ -119,13 +119,33 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({RetryableException.class})
     @ResponseBody
     public ResponseEntity<ErrorResponse> handleCommunicationExceptions(
+            final RetryableException ex,
             final WebRequest request) {
         HttpStatus status = HttpStatus.SERVICE_UNAVAILABLE;
 
         ErrorResponse errorResponse = new ErrorResponse(
                 System.currentTimeMillis(),
                 status.value(),
-                "Error communicating with external service",
+                ex.getMessage(),
+                request.getDescription(false)
+        );
+
+        return ResponseEntity
+                .status(status)
+                .body(errorResponse);
+    }
+
+    @ExceptionHandler({IllegalArgumentException.class})
+    @ResponseBody
+    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(
+            final IllegalArgumentException ex,
+            final WebRequest request) {
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+
+        ErrorResponse errorResponse = new ErrorResponse(
+                System.currentTimeMillis(),
+                status.value(),
+                ex.getMessage(),
                 request.getDescription(false)
         );
 

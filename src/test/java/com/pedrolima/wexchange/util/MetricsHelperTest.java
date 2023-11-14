@@ -10,21 +10,21 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class MetricsUtilsTest {
+public class MetricsHelperTest {
 
-    private MetricsUtils metricsUtils;
+    private MetricsHelper metricsHelper;
     private SimpleMeterRegistry meterRegistry;
 
     @BeforeEach
     void setUp() {
         meterRegistry = new SimpleMeterRegistry();
-        metricsUtils = new MetricsUtils(meterRegistry);
+        metricsHelper = new MetricsHelper(meterRegistry);
     }
 
     @Test
     public void registryExchangeRateRetrievalElapsedTime_shouldRecordElapsedTime() {
         long time = 1000;
-        metricsUtils.registryExchangeRateRetrievalElapsedTime(time);
+        metricsHelper.registryExchangeRateRetrievalElapsedTime(time);
 
         Timer timer = meterRegistry.find("wexchange.application.exchange.rate.retrieval.time").timer();
         assertThat(timer).isNotNull();
@@ -34,7 +34,7 @@ public class MetricsUtilsTest {
 
     @Test
     public void incrementRequestErrorMetric_shouldIncrementRequestErrorCount() {
-        metricsUtils.incrementRequestErrorMetric();
+        metricsHelper.incrementRequestErrorMetric();
 
         Counter counter = meterRegistry.find("wexchange.application.integration.fiscal.request.error.count").counter();
         assertThat(counter).isNotNull();
@@ -43,7 +43,7 @@ public class MetricsUtilsTest {
 
     @Test
     public void incrementParsingErrorMetric_shouldIncrementParsingErrorCount() {
-        metricsUtils.incrementParsingErrorMetric();
+        metricsHelper.incrementParsingErrorMetric();
 
         Counter counter = meterRegistry.find("wexchange.application.parsing.error.count").counter();
         assertThat(counter).isNotNull();
@@ -52,7 +52,7 @@ public class MetricsUtilsTest {
 
     @Test
     public void incrementUnmappedExceptionMetric_shouldIncrementUnmappedErrorCount() {
-        metricsUtils.incrementUnmappedExceptionMetric();
+        metricsHelper.incrementUnmappedExceptionMetric();
 
         Counter counter = meterRegistry.find("wexchange.application.unmapped.error.count").counter();
         assertThat(counter).isNotNull();
