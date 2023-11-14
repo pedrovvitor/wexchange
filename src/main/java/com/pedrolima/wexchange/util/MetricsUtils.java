@@ -1,5 +1,6 @@
 package com.pedrolima.wexchange.util;
 
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
@@ -19,15 +20,22 @@ public class MetricsUtils {
                 .register(meterRegistry)
                 .record(Duration.ofNanos(time));
     }
+
     public void incrementRequestErrorMetric() {
-        Timer.builder("wexchange.application.request.io.error.count")
-                .publishPercentileHistogram()
-                .register(meterRegistry);
+        Counter.builder("wexchange.application.integration.fiscal.request.error.count")
+                .register(meterRegistry)
+                .increment();
     }
 
     public void incrementParsingErrorMetric() {
-        Timer.builder("wexchange.application.parsing.error.count")
-                .publishPercentileHistogram()
-                .register(meterRegistry);
+        Counter.builder("wexchange.application.parsing.error.count")
+                .register(meterRegistry)
+                .increment();
+    }
+
+    public void incrementUnmappedExceptionMetric() {
+        Counter.builder("wexchange.application.unmapped.error.count")
+                .register(meterRegistry)
+                .increment();
     }
 }

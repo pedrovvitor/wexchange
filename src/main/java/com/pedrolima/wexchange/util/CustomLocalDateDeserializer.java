@@ -1,33 +1,34 @@
 package com.pedrolima.wexchange.util;
 
-import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.pedrolima.wexchange.exception.DeserializationException;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
+@Slf4j
 public class CustomLocalDateDeserializer extends JsonDeserializer<LocalDate> {
 
     @Override
-    public LocalDate deserialize(final JsonParser parser, final DeserializationContext context) throws IOException, JacksonException {
-        final var dateStr = parser.getText();
-        if (dateStr == null) {
-            return null;
-        }
-
-        if (dateStr.trim().isEmpty()) {
-            throw new DateTimeParseException("Date string must not be empty", dateStr, 0);
-        }
-
-        DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE;
+    public LocalDate deserialize(final JsonParser parser, final DeserializationContext context) {
+        final String dateStr;
         try {
-            return LocalDate.parse(dateStr, formatter);
+            dateStr = parser.getText();
+            if (StringUtils.isBlank(dateStr)) {
+                throw new DeserializationException("Date must not be blank");
+            }
+            return LocalDate.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE);
+        } catch (IOException e) {
+            log.error("Unable to parse {} {}", parser, e.toString());
+            throw new DeserializationException("Unable to parse 'date' input");
         } catch (DateTimeParseException e) {
-            throw new DateTimeParseException("Date string is not in 'YYYY-mm-dd' format", dateStr, 0);
+            throw new DeserializationException(e.getMessage());
         }
     }
 }

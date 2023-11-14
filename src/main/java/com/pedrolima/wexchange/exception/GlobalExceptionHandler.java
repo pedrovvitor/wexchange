@@ -1,26 +1,27 @@
 package com.pedrolima.wexchange.exception;
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.context.request.WebRequest;
 
-import java.time.format.DateTimeParseException;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @ControllerAdvice
-@Slf4j
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(DateTimeParseException.class)
+    @ExceptionHandler({DeserializationException.class, HttpMessageNotReadableException.class})
     @ResponseBody
     public ResponseEntity<ErrorResponse> handleDateTimeParseException(
-            final DateTimeParseException ex,
+            final RuntimeException ex,
             final WebRequest request
     ) {
-        log.debug("Handling HttpMessageNotReadableException: ", ex);
         HttpStatus status = HttpStatus.BAD_REQUEST;
 
         ErrorResponse errorResponse = new ErrorResponse(
@@ -37,11 +38,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
     @ResponseBody
-    public ResponseEntity<ErrorResponse> handleDateTimeParseException(
+    public ResponseEntity<ErrorResponse> handleResourceNotFoundException(
             final ResourceNotFoundException ex,
             final WebRequest request
     ) {
-        log.debug("Handling ResourceNotFoundException: ", ex);
         HttpStatus status = HttpStatus.NOT_FOUND;
 
         ErrorResponse errorResponse = new ErrorResponse(
@@ -55,13 +55,13 @@ public class GlobalExceptionHandler {
                 .status(status)
                 .body(errorResponse);
     }
+
     @ExceptionHandler(ExchangeRateNotFoundException.class)
     @ResponseBody
-    public ResponseEntity<ErrorResponse> handleDateTimeParseException(
+    public ResponseEntity<ErrorResponse> handleExchangeRateNotFoundException(
             final ExchangeRateNotFoundException ex,
             final WebRequest request
     ) {
-        log.debug("Handling ExchangeRateNotFoundException: ", ex);
         HttpStatus status = HttpStatus.NOT_FOUND;
 
         ErrorResponse errorResponse = new ErrorResponse(
@@ -82,13 +82,78 @@ public class GlobalExceptionHandler {
             final PurchaseConversionException ex,
             final WebRequest request
     ) {
-        log.error("Handling PurchaseConversionException", ex);
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
 
         ErrorResponse errorResponse = new ErrorResponse(
                 System.currentTimeMillis(),
                 status.value(),
-                ex.getMessage(), // Generic error message
+                ex.getMessage(),
+                request.getDescription(false)
+        );
+
+        return ResponseEntity
+                .status(status)
+                .body(errorResponse);
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    @ResponseBody
+    public ResponseEntity<ErrorResponse> handleMissingServletRequestParameterException(
+            final MissingServletRequestParameterException ex,
+            final WebRequest request
+    ) {
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+
+        ErrorResponse errorResponse = new ErrorResponse(
+                System.currentTimeMillis(),
+                status.value(),
+                ex.getMessage(),
+                request.getDescription(false)
+        );
+
+        return ResponseEntity
+                .status(status)
+                .body(errorResponse);
+    }
+
+    @ExceptionHandler({RetryableException.class})
+    @ResponseBody
+    public ResponseEntity<ErrorResponse> handleCommunicationExceptions(
+            final WebRequest request) {
+        HttpStatus status = HttpStatus.SERVICE_UNAVAILABLE;
+
+        ErrorResponse errorResponse = new ErrorResponse(
+                System.currentTimeMillis(),
+                status.value(),
+                "Error communicating with external service",
+                request.getDescription(false)
+        );
+
+        return ResponseEntity
+                .status(status)
+                .body(errorResponse);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseBody
+    public ResponseEntity<ErrorResponse> handleMethodArgumentNotValidException(
+            final MethodArgumentNotValidException ex,
+            final WebRequest request) {
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+
+        final var errors = ex.getFieldErrors().stream()
+                .map(fieldError -> {
+                    String defaultMessage = Optional
+                            .ofNullable(fieldError.getDefaultMessage())
+                            .orElse("Invalid value");
+                    return fieldError.getField() + " " + defaultMessage;
+                })
+                .collect(Collectors.joining(", "));
+
+        ErrorResponse errorResponse = new ErrorResponse(
+                System.currentTimeMillis(),
+                ex.getStatusCode().value(),
+                errors,
                 request.getDescription(false)
         );
 
