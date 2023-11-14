@@ -2,7 +2,7 @@ package com.pedrolima.wexchange.api.controllers;
 
 import com.pedrolima.wexchange.bean.exchange.CountryCurrencyData;
 import com.pedrolima.wexchange.bean.exchange.CountryCurrencyOutput;
-import com.pedrolima.wexchange.service.CurrenciesService;
+import com.pedrolima.wexchange.service.CountryCurrenciesService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class CountryCurrencyControllerTest {
 
     @Mock
-    private CurrenciesService currenciesService;
+    private CountryCurrenciesService countryCurrenciesService;
 
     @InjectMocks
     private CountryCurrencyController countryCurrencyController;
@@ -48,7 +48,7 @@ class CountryCurrencyControllerTest {
 
         final var expectedOutput = new CountryCurrencyOutput(countryCurrencies, Collections.emptyList());
 
-        when(currenciesService.getAllExchangeRates())
+        when(countryCurrenciesService.getAllExchangeRates())
                 .thenReturn(expectedOutput);
 
         final var request = get("/v1/country_currencies")

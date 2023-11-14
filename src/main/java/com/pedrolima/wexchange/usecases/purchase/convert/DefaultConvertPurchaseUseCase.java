@@ -66,7 +66,7 @@ public class DefaultConvertPurchaseUseCase extends ConvertPurchaseUseCase {
             I opted to provide both conditions
          */
         final var formattedCountryCurrency =
-                CountryCurrencyUtils.formatCurrencyName(input.countryCurrency());
+                CountryCurrencyUtils.formatCountryCurrency(input.countryCurrency());
         final Purchase purchase = fetchPurchase(input);
         final String fullUrl = buildFullUrl(formattedCountryCurrency, purchase);
         final HttpRequest request = buildHttpRequest(fullUrl);

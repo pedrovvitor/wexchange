@@ -2,7 +2,7 @@ package com.pedrolima.wexchange.api.controllers;
 
 import com.pedrolima.wexchange.api.CountryCurrencyApi;
 import com.pedrolima.wexchange.bean.exchange.CountryCurrencyOutput;
-import com.pedrolima.wexchange.service.CurrenciesService;
+import com.pedrolima.wexchange.service.CountryCurrenciesService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -11,9 +11,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class CountryCurrencyController implements CountryCurrencyApi {
 
-    private final CurrenciesService currenciesService;
+    private final CountryCurrenciesService countryCurrenciesService;
     @Override
     public ResponseEntity<CountryCurrencyOutput> findAll() {
-        return ResponseEntity.ok(currenciesService.getAllExchangeRates());
+        return ResponseEntity.ok(countryCurrenciesService.getAllExchangeRates());
     }
 }

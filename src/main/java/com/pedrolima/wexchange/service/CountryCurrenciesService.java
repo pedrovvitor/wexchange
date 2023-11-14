@@ -24,7 +24,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -35,7 +34,7 @@ import static com.pedrolima.wexchange.integration.fiscal.ApiUrlBuilder.FieldType
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class CurrenciesService {
+public class CountryCurrenciesService {
 
     private static final int PAGE_SIZE_MAX_VALUE = 10000;
 
@@ -47,7 +46,7 @@ public class CurrenciesService {
     private final MetricsHelper metricsHelper;
 
     @Retryable(
-            retryFor = {IOException.class, InterruptedException.class},
+            retryFor = {RetryableException.class},
             backoff = @Backoff(delay = 1000))
     public CountryCurrencyOutput getAllExchangeRates() {
         String fullUrl = buildFullUrl();
