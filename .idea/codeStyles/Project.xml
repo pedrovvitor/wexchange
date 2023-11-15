@@ -1,0 +1,21 @@
+<component name="ProjectCodeStyleConfiguration">
+  <code_scheme name="Project" version="173">
+    <PostgresCodeStyleSettings version="6">
+      <option name="USE_GENERAL_STYLE" value="false" />
+      <option name="KEYWORD_CASE" value="1" />
+      <option name="SUBQUERY_OPENING" value="1" />
+      <option name="SUBQUERY_CONTENT" value="1" />
+      <option name="SUBQUERY_CLOSING" value="1" />
+      <option name="SUBQUERY_PAR_SPACE_INSIDE" value="true" />
+      <option name="EXPR_CASE_WHEN_WRAP" value="false" />
+      <option name="EXPR_CASE_END" value="9" />
+    </PostgresCodeStyleSettings>
+    <SqlCodeStyleSettings version="6">
+      <option name="TABLE_COLLAPSE" value="true" />
+      <option name="CREATE_SCHEMA_CONTENT_INDENT" value="false" />
+    </SqlCodeStyleSettings>
+    <codeStyleSettings language="PostgreSQL">
+      <option name="KEEP_LINE_BREAKS" value="false" />
+    </codeStyleSettings>
+  </code_scheme>
+</component>

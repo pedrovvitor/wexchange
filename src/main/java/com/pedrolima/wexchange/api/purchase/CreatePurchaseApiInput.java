@@ -2,7 +2,7 @@ package com.pedrolima.wexchange.api.purchase;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.pedrolima.wexchange.util.CustomLocalDateDeserializer;
+import com.pedrolima.wexchange.utils.CustomLocalDateDeserializer;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;

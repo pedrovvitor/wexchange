@@ -24,7 +24,7 @@ public class PurchaseController implements PurchaseApi {
     public ResponseEntity<CreatePurchaseApiOutput> createPurchase(final CreatePurchaseApiInput input) {
         final var output = createPurchaseUseCase.execute(input);
 
-        return ResponseEntity.created(URI.create("/purchases/" + output.id() + "/convert?=")).body(output);
+        return ResponseEntity.created(URI.create("/purchases/" + output.id() + "/convert?country_currency=")).body(output);
     }
 
     @Override

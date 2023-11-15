@@ -9,6 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
 @RequestMapping("v1/country_currencies")
@@ -22,5 +23,5 @@ public interface CountryCurrencyApi {
             @ApiResponse(responseCode = "200", description = "Purchase conversion was successful"),
             @ApiResponse(responseCode = "500", description = "An internal server error was thrown")
     })
-    ResponseEntity<CountryCurrencyOutput> findAll();
+    ResponseEntity<CountryCurrencyOutput> findAll(@RequestParam(required = false) String countryCurrency);
 }

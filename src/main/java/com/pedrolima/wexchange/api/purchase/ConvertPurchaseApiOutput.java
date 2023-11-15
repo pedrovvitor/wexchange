@@ -6,20 +6,19 @@ public record ConvertPurchaseApiOutput(
         String id,
         String description,
         String transactionDate,
+        String conversionCountryCurrency,
         BigDecimal originalAmount,
-        String country,
-        String currency,
         BigDecimal exchangeRate,
         String exchangeRateEffectiveDate,
         BigDecimal convertedAmount
 ) {
+
     public static ConvertPurchaseApiOutput with(
             String anId,
             String aDescription,
             String aTransactionDate,
             BigDecimal anOriginalAmount,
-            String aCountry,
-            String aCurrency,
+            String aCountryCurrency,
             BigDecimal aExchangeRate,
             String anExchangeRateEffectiveDate,
             BigDecimal aConvertedAmount) {
@@ -27,9 +26,8 @@ public record ConvertPurchaseApiOutput(
                 anId,
                 aDescription,
                 aTransactionDate,
+                aCountryCurrency,
                 anOriginalAmount,
-                aCountry,
-                aCurrency,
                 aExchangeRate,
                 anExchangeRateEffectiveDate,
                 aConvertedAmount

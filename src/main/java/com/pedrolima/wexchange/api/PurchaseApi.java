@@ -3,7 +3,7 @@ package com.pedrolima.wexchange.api;
 import com.pedrolima.wexchange.api.purchase.ConvertPurchaseApiOutput;
 import com.pedrolima.wexchange.api.purchase.CreatePurchaseApiInput;
 import com.pedrolima.wexchange.api.purchase.CreatePurchaseApiOutput;
-import com.pedrolima.wexchange.exception.ErrorResponse;
+import com.pedrolima.wexchange.exceptions.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
