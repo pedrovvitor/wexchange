@@ -12,16 +12,16 @@ public class PurchaseJpaEntityTest {
 
     @Test
     void givenValidParams_whenCallNewPurchase_thenInstantiateAPurchase() {
-        final var description = "Test Purchase";
-        final var date = LocalDate.now();
-        final var amount = BigDecimal.valueOf(100);
+        final var aDescription = "Test Purchase";
+        final var aDate = LocalDate.now();
+        final var anAmount = BigDecimal.valueOf(100);
 
-        PurchaseJpaEntity purchase = PurchaseJpaEntity.newPurchase(description, date, amount);
+        PurchaseJpaEntity purchase = PurchaseJpaEntity.newPurchase(aDescription, aDate, anAmount);
 
         assertNotNull(purchase.getId());
-        assertEquals(description, purchase.getDescription());
-        assertEquals(date, purchase.getDate());
-        assertEquals(amount, purchase.getAmount());
+        assertEquals(aDescription, purchase.getDescription());
+        assertEquals(aDate, purchase.getDate());
+        assertEquals(anAmount, purchase.getAmount());
         assertNotNull(purchase.getCreatedAt());
         assertNotNull(purchase.getUpdatedAt());
     }

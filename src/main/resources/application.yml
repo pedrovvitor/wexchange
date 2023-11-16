@@ -29,14 +29,10 @@ spring:
       "[hibernate.connection.provider_disables_autocommit]": true
       # To improve the performance to the max, disable the auto-commit and the open-in-view
       # https://vladmihalcea.com/why-you-should-always-use-hibernate-connection-provider_disables_autocommit-for-resource-local-jpa-transactions/
-  profiles:
-    active: production
-
 fiscal:
   service:
     api:
       endpoint: "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/od/rates_of_exchange"
-
 management:
   endpoints:
     web:

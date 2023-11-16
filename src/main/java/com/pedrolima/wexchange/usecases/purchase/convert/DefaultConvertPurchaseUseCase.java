@@ -69,12 +69,13 @@ public class DefaultConvertPurchaseUseCase extends ConvertPurchaseUseCase {
         final var countryCurrencies = findExchangeRates(input, purchase, availablePeriod);
 
         if (countryCurrencies.size() > 1) {
-            throw new MultipleCountryCurrenciesException("%d Country currencies found with name %s: %s".formatted(
-                    countryCurrencies.size(),
-                    input.countryCurrency(),
-                    countryCurrencies.stream().map(ConversionRateJpaEntity::getCountryCurrency)
-                            .collect(Collectors.joining("\\n, "))
-            ));
+            throw new MultipleCountryCurrenciesException("%d Country currencies found containing %s it: %s"
+                    .formatted(
+                            countryCurrencies.size(),
+                            input.countryCurrency(),
+                            countryCurrencies.stream().map(ConversionRateJpaEntity::getCountryCurrency)
+                                    .collect(Collectors.joining("\\n, "))
+                    ));
         }
 
         return calculateAndProduceOutput(purchase, countryCurrencies.stream().findFirst().get());

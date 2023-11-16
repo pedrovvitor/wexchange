@@ -2,8 +2,9 @@ package com.pedrolima.wexchange.api.controllers;
 
 import com.pedrolima.wexchange.api.CountryCurrencyApi;
 import com.pedrolima.wexchange.bean.exchange.CountryCurrencyOutput;
-import com.pedrolima.wexchange.services.CountryCurrenciesService;
+import com.pedrolima.wexchange.services.CountryCurrencyService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -11,10 +12,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class CountryCurrencyController implements CountryCurrencyApi {
 
-    private final CountryCurrenciesService countryCurrenciesService;
+    private final CountryCurrencyService countryCurrencyService;
 
     @Override
-    public ResponseEntity<CountryCurrencyOutput> findAll(String countryCurrency) {
-        return ResponseEntity.ok(countryCurrenciesService.findAllCountryCurrencies(countryCurrency));
+    public ResponseEntity<CountryCurrencyOutput> findByCountryCurrency(final Pageable pageable, final String countryCurrency) {
+        return ResponseEntity.ok(countryCurrencyService.findByCountryCurrency(pageable, countryCurrency));
     }
 }

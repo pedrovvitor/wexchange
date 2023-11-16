@@ -33,6 +33,27 @@ import static com.pedrolima.wexchange.integration.fiscal.builder.ApiUrlBuilder.F
 import static com.pedrolima.wexchange.integration.fiscal.builder.ApiUrlBuilder.PAGE_SIZE_MAX_VALUE;
 import static com.pedrolima.wexchange.integration.fiscal.builder.ApiUrlBuilder.PageType.SIZE;
 
+/**
+ * Service for periodically updating exchange rates for various country currencies.
+ * It interacts with an external fiscal service API to fetch updated exchange rate data.
+ * The service is scheduled to run daily, ensuring that the database always has the latest exchange rate information.
+ * <p>
+ * The update process includes:
+ * 1. Building a URL request targeting the fiscal service API to fetch exchange rates.
+ * 2. Sending the request and processing the response to obtain exchange rate data.
+ * 3. Filtering and saving the relevant exchange rate information into the database.
+ * <p>
+ * The service leverages Spring's @Scheduled annotation for daily execution and @Retryable for handling failures.
+ * In case of communication failures or unexpected response statuses, the operation is retried with a defined backoff strategy.
+ * <p>
+ * Key aspects of the service include:
+ * - Scheduled task execution for daily updates.
+ * - Error handling with retries for robustness.
+ * - Metrics collection for monitoring and analysis.
+ * - Efficient data processing and storage.
+ * <p>
+ * The service's scalability and maintainability aspects are considered, with the potential to evolve into a separate microservice or an AWS Lambda function for better resource management.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -54,10 +75,10 @@ public class ScheduledFiscalDataUpdateService {
      */
     @Retryable(
             retryFor = {RetryableException.class},
-            backoff = @Backoff(delay = 10_000),
+            backoff = @Backoff(delay = 5_000),
             maxAttempts = 10
     )
-    @Scheduled(fixedRate = ONE_DAY_MS, initialDelay = 1)
+    @Scheduled(fixedRate = ONE_DAY_MS, initialDelay = 100)
     public void updateAllExchangeRates() {
         String fullUrl = buildFullUrl();
         HttpRequest request = buildHttpRequest(fullUrl);
@@ -72,21 +93,17 @@ public class ScheduledFiscalDataUpdateService {
 
                 saveCountryCurrencies(countryCurrencies);
                 watch.stop();
-                log.debug("Processing and saving all Country Currencies successfully. Elapsed time {}",
-                        watch.formatTime());
+                log.debug("Processing and saving all Country Currencies successfully. Elapsed time {}", watch.formatTime());
             } else {
-                log.warn("Unexpected response status: {} - Retry attempt: {}", response.statusCode(),
-                        RetrySynchronizationManager.getContext().getRetryCount() + 1);
+                log.warn("Unexpected response status: {} - Retry attempt: {}", response.statusCode(), getRetryCount());
                 throw new RetryableException("Unexpected response from API");
             }
         } catch (JsonProcessingException e) {
-            log.error("Error parsing JSON response: {} - Retry attempt: {}", e,
-                    RetrySynchronizationManager.getContext().getRetryCount() + 1);
+            log.error("Error parsing JSON response: {} - Retry attempt: {}", e, getRetryCount());
             metricsHelper.incrementParsingErrorMetric();
             throw new RetryableException("Error parsing API response", e);
         } catch (IOException | InterruptedException e) {
-            log.error("Failed to communicate with fiscaldata api: {} - Retry attempt: {}", e,
-                    RetrySynchronizationManager.getContext().getRetryCount() + 1);
+            log.error("Failed to communicate with fiscaldata api: {} - Retry attempt: {}", e, getRetryCount());
             throw new RetryableException("Failed to communicate with fiscaldata api", e);
         }
     }
@@ -122,5 +139,10 @@ public class ScheduledFiscalDataUpdateService {
                 .uri(URI.create(url))
                 .GET()
                 .build();
+    }
+
+    private static int getRetryCount() {
+        final var context = RetrySynchronizationManager.getContext();
+        return (context != null) ? context.getRetryCount() : 0;
     }
 }

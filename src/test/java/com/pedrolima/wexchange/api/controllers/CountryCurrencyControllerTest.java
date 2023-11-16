@@ -1,8 +1,7 @@
 package com.pedrolima.wexchange.api.controllers;
 
-import com.pedrolima.wexchange.bean.exchange.CountryCurrencyOutput;
 import com.pedrolima.wexchange.integration.fiscal.bean.CountryCurrency;
-import com.pedrolima.wexchange.services.CountryCurrenciesService;
+import com.pedrolima.wexchange.services.CountryCurrencyService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,14 +11,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.util.Collections;
 import java.util.List;
 
 @ExtendWith(MockitoExtension.class)
 class CountryCurrencyControllerTest {
 
     @Mock
-    private CountryCurrenciesService countryCurrenciesService;
+    private CountryCurrencyService countryCurrencyService;
 
     @InjectMocks
     private CountryCurrencyController countryCurrencyController;
@@ -38,7 +36,7 @@ class CountryCurrencyControllerTest {
                 new CountryCurrency("AFGHANISTAN-AFGHANI", "AFGHANISTAN", "AFGHANI")
         );
 
-        final var expectedOutput = new CountryCurrencyOutput(countryCurrencies, Collections.emptyList());
+        //        final var expectedOutput = new CountryCurrencyOutput(countryCurrencies, Collections.emptyList());
 
         //        when(countryCurrenciesService.findAllCountryCurrencies(any()))
         //                .thenReturn(expectedOutput);

@@ -7,30 +7,29 @@ import com.pedrolima.wexchange.repositories.CountryCurrencyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class CountryCurrenciesService {
+public class CountryCurrencyService {
 
     private final CountryCurrencyRepository repository;
 
-    public CountryCurrencyOutput findAllCountryCurrencies(final String countryCurrency) {
-        final List<CountryCurrency> countryCurrencies;
+    public CountryCurrencyOutput findByCountryCurrency(final Pageable pageable, final String countryCurrency) {
+        final Page<CountryCurrency> countryCurrencies;
 
         if (StringUtils.isBlank(countryCurrency)) {
-            countryCurrencies = repository.findAll().stream()
-                    .map(CountryCurrency::with)
-                    .collect(Collectors.toList());
+            countryCurrencies = repository.findAll(pageable)
+                    .map(CountryCurrency::with);
         } else {
-            countryCurrencies = repository.findAllContainingIgnoreCase(countryCurrency).stream()
-                    .map(CountryCurrency::with)
-                    .collect(Collectors.toList());
+            countryCurrencies = repository.findAllContainingIgnoreCase(pageable, countryCurrency)
+                    .map(CountryCurrency::with);
         }
         final var convertParams = Map.of(
                 "{id}", "String: Purchase id (UUID format)",

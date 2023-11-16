@@ -37,7 +37,7 @@ public class CountryCurrencyJpaEntity {
         return new CountryCurrencyJpaEntity(
                 apiCountryCurrency.countryCurrency(),
                 apiCountryCurrency.country(),
-                apiCountryCurrency.countryCurrency());
+                apiCountryCurrency.currency());
     }
 
     @Override
