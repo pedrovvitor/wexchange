@@ -49,4 +49,16 @@ public class ConversionRateJpaEntity {
                 aConversionRate.exchangeRate()
         );
     }
+
+    public static ConversionRateJpaEntity newConversionRate(
+            final String aCountryCurrency,
+            final LocalDate anEffectiveDate,
+            final BigDecimal anExchangeRate
+    ) {
+        return new ConversionRateJpaEntity(
+                aCountryCurrency,
+                anEffectiveDate,
+                anExchangeRate
+        );
+    }
 }

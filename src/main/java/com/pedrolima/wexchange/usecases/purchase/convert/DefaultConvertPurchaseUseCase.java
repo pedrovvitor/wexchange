@@ -52,6 +52,10 @@ import static org.apache.commons.lang3.StringUtils.length;
 @RequiredArgsConstructor
 public class DefaultConvertPurchaseUseCase extends ConvertPurchaseUseCase {
 
+    public static final int MIN_COUNTRY_CURRENCY_LENGHT = 3;
+
+    public static final int MAX_COUNTRY_CURRENCY_LENGHT = 100;
+
     private final PurchaseRepository purchaseRepository;
 
     private final ConversionRateRepository conversionRateRepository;
@@ -102,9 +106,10 @@ public class DefaultConvertPurchaseUseCase extends ConvertPurchaseUseCase {
     }
 
     private static void validateInput(final ConvertPurchaseApiInput input) {
-        if (isBlank(input.countryCurrency()) || length(input.countryCurrency()) < 3) {
-            throw new IllegalArgumentException("Input %s should be in '{country_name}-{currency_name}' format"
-                    .formatted(input.countryCurrency()));
+        if (isBlank(input.countryCurrency()) || length(input.countryCurrency()) < MIN_COUNTRY_CURRENCY_LENGHT
+                || length(input.countryCurrency()) > MAX_COUNTRY_CURRENCY_LENGHT
+        ) {
+            throw new IllegalArgumentException("Country Currency must have between 3 and 100 characters");
         }
     }
 
