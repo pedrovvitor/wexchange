@@ -55,7 +55,7 @@ public interface PurchaseApi {
     @ValidateOnExecution
     @Validated
     ResponseEntity<ConvertPurchaseApiOutput> convertPurchase(
-            // TODO: 14/11/2023 fix: validations not working as expected
+            // @TODO: 14/11/2023 fix: validations not working as expected
             @Parameter(description = "The unique identifier of the purchase to be converted.")
             @PathVariable(name = "id") @NotBlank String id,
             @Parameter(description = "The country-currency format in which the purchase amount is to be converted. Should follow the pattern 'Country-Currency'.")

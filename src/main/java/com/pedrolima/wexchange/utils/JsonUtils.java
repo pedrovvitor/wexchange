@@ -16,7 +16,7 @@ public class JsonUtils {
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .registerModule(new JavaTimeModule());
 
-    public static <T> List<T> extractDataList(String json, Class<T> clazz) throws IOException {
+    public static <T> List<T> extractDataList(final String json, final Class<T> clazz) throws IOException {
         JsonNode rootNode = OBJECT_MAPPER.readTree(json);
         JsonNode dataArray = rootNode.path("data");
         JavaType type = TypeFactory.defaultInstance().constructCollectionType(List.class, clazz);

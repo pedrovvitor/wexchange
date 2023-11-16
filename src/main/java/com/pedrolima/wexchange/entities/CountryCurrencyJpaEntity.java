@@ -33,7 +33,7 @@ public class CountryCurrencyJpaEntity {
         this.currency = currency;
     }
 
-    public static CountryCurrencyJpaEntity with(CountryCurrency apiCountryCurrency) {
+    public static CountryCurrencyJpaEntity with(final CountryCurrency apiCountryCurrency) {
         return new CountryCurrencyJpaEntity(
                 apiCountryCurrency.countryCurrency(),
                 apiCountryCurrency.country(),

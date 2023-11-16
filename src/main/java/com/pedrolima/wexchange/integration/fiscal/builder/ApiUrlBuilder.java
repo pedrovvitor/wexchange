@@ -21,7 +21,7 @@ public class ApiUrlBuilder {
 
     private boolean firstParam;
 
-    public ApiUrlBuilder(String baseUrl) {
+    public ApiUrlBuilder(final String baseUrl) {
         this.urlBuilder = new StringBuilder(baseUrl);
         this.fields = new ArrayList<>();
         this.sorts = new ArrayList<>();
@@ -29,7 +29,7 @@ public class ApiUrlBuilder {
         this.firstParam = true;
     }
 
-    private void appendParam(String name, String value) {
+    private void appendParam(final String name, final String value) {
         if (firstParam) {
             urlBuilder.append("?").append(name).append("=").append(value);
             firstParam = false;
@@ -38,7 +38,7 @@ public class ApiUrlBuilder {
         }
     }
 
-    public ApiUrlBuilder addFields(FieldType... fields) {
+    public ApiUrlBuilder addFields(final FieldType... fields) {
         String value = Arrays.stream(fields)
                 .map(FieldType::getAlias)
                 .collect(Collectors.joining(","));
@@ -46,7 +46,7 @@ public class ApiUrlBuilder {
         return this;
     }
 
-    public ApiUrlBuilder addFilter(FieldType field, ParamComparator comparator, String value) {
+    public ApiUrlBuilder addFilter(final FieldType field, final ParamComparator comparator, final String value) {
         if (comparator.equals(ParamComparator.IN)) {
             filters.add(field.alias + comparator.alias + "(" + value + ")");
         } else {
@@ -55,13 +55,13 @@ public class ApiUrlBuilder {
         return this;
     }
 
-    public ApiUrlBuilder addSorting(SortOrder order, FieldType field) {
+    public ApiUrlBuilder addSorting(final SortOrder order, final FieldType field) {
         String value = order.alias.concat(field.alias);
         sorts.add(value);
         return this;
     }
 
-    public ApiUrlBuilder addPagination(PageType pageType, int value) {
+    public ApiUrlBuilder addPagination(final PageType pageType, final int value) {
         appendParam("page[" + pageType.alias + "]", String.valueOf(value));
         return this;
     }
@@ -90,7 +90,7 @@ public class ApiUrlBuilder {
 
         private final String alias;
 
-        PageType(String alias) {
+        PageType(final String alias) {
             this.alias = alias;
         }
     }
@@ -106,7 +106,7 @@ public class ApiUrlBuilder {
 
         private final String alias;
 
-        FieldType(String alias) {
+        FieldType(final String alias) {
             this.alias = alias;
         }
     }
@@ -118,7 +118,7 @@ public class ApiUrlBuilder {
 
         private final String alias;
 
-        SortOrder(String alias) {
+        SortOrder(final String alias) {
             this.alias = alias;
         }
     }
@@ -135,7 +135,7 @@ public class ApiUrlBuilder {
 
         private final String alias;
 
-        ParamComparator(String alias) {
+        ParamComparator(final String alias) {
             this.alias = alias;
         }
     }

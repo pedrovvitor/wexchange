@@ -17,7 +17,7 @@ public final class ConversionUtils {
         return Pair.of(sixMonthsBefore, purchase.getDate());
     }
 
-    public static BigDecimal calculateConvertedAmount(PurchaseJpaEntity purchase, BigDecimal exchangeRate) {
+    public static BigDecimal calculateConvertedAmount(final PurchaseJpaEntity purchase, final BigDecimal exchangeRate) {
         return purchase.getAmount().multiply(exchangeRate)
                 .setScale(2, RoundingMode.HALF_UP);
     }

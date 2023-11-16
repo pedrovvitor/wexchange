@@ -12,7 +12,7 @@ public record CountryCurrencyOutput(
 
 ) {
 
-    public static CountryCurrencyOutput with(Page<CountryCurrency> countryCurrencies, List<ApiLink> links) {
+    public static CountryCurrencyOutput with(final Page<CountryCurrency> countryCurrencies, final List<ApiLink> links) {
         return new CountryCurrencyOutput(countryCurrencies, links);
     }
 }

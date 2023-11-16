@@ -14,7 +14,7 @@ public record CreatePurchaseApiOutput(
         List<ApiLink> links
 ) {
 
-    public static CreatePurchaseApiOutput with(PurchaseJpaEntity aPurchase, List<ApiLink> links) {
+    public static CreatePurchaseApiOutput with(final PurchaseJpaEntity aPurchase, final List<ApiLink> links) {
         return new CreatePurchaseApiOutput(
                 aPurchase.getId(),
                 aPurchase.getDescription(),

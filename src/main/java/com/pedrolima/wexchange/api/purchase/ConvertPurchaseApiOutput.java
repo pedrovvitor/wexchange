@@ -14,14 +14,14 @@ public record ConvertPurchaseApiOutput(
 ) {
 
     public static ConvertPurchaseApiOutput with(
-            String anId,
-            String aDescription,
-            String aTransactionDate,
-            BigDecimal anOriginalAmount,
-            String aCountryCurrency,
-            BigDecimal aExchangeRate,
-            String anExchangeRateEffectiveDate,
-            BigDecimal aConvertedAmount) {
+            final String anId,
+            final String aDescription,
+            final String aTransactionDate,
+            final BigDecimal anOriginalAmount,
+            final String aCountryCurrency,
+            final BigDecimal aExchangeRate,
+            final String anExchangeRateEffectiveDate,
+            final BigDecimal aConvertedAmount) {
         return new ConvertPurchaseApiOutput(
                 anId,
                 aDescription,

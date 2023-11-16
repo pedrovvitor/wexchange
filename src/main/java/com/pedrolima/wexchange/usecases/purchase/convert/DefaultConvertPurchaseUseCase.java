@@ -101,14 +101,14 @@ public class DefaultConvertPurchaseUseCase extends ConvertPurchaseUseCase {
         return countryCurrencies;
     }
 
-    private static void validateInput(ConvertPurchaseApiInput input) {
+    private static void validateInput(final ConvertPurchaseApiInput input) {
         if (isBlank(input.countryCurrency()) || length(input.countryCurrency()) < 3) {
             throw new IllegalArgumentException("Input %s should be in '{country_name}-{currency_name}' format"
                     .formatted(input.countryCurrency()));
         }
     }
 
-    private PurchaseJpaEntity fetchPurchase(String purchaseId) {
+    private PurchaseJpaEntity fetchPurchase(final String purchaseId) {
         return purchaseRepository.findById(purchaseId)
                 .orElseThrow(() -> {
                     log.error("Purchase not found for id: {}", purchaseId);

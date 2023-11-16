@@ -118,7 +118,7 @@ public class ScheduledFiscalDataUpdateService {
         repository.saveAll(fiscalDataApiCountryCurrencies);
     }
 
-    private HttpResponse<String> sendRequest(HttpRequest request) throws IOException, InterruptedException {
+    private HttpResponse<String> sendRequest(final HttpRequest request) throws IOException, InterruptedException {
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
         HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
@@ -134,7 +134,7 @@ public class ScheduledFiscalDataUpdateService {
                 .build();
     }
 
-    private HttpRequest buildHttpRequest(String url) {
+    private HttpRequest buildHttpRequest(final String url) {
         return HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .GET()

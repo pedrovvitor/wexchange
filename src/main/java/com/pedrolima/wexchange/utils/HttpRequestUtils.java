@@ -10,11 +10,11 @@ public final class HttpRequestUtils {
 
     private HttpRequestUtils() {}
 
-    public static HttpRequest buildHttpRequest(String url) {
+    public static HttpRequest buildHttpRequest(final String url) {
         return HttpRequest.newBuilder().uri(URI.create(url)).GET().build();
     }
 
-    public static HttpResponse<String> sendRequest(HttpRequest request) throws IOException, InterruptedException {
+    public static HttpResponse<String> sendRequest(final HttpRequest request) throws IOException, InterruptedException {
         return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
     }
 }

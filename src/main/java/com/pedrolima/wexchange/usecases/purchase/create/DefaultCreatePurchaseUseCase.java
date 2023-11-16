@@ -50,7 +50,7 @@ public class DefaultCreatePurchaseUseCase extends CreatePurchaseUseCase {
         return CreatePurchaseApiOutput.with(purchaseJpaEntity, relatedLinks);
     }
 
-    private static List<ApiLink> createApiLinks(PurchaseJpaEntity purchaseJpaEntity) {
+    private static List<ApiLink> createApiLinks(final PurchaseJpaEntity purchaseJpaEntity) {
         final var convertParams = Map.of(
                 "country_currency", "String: Country-Currency to convert"
         );

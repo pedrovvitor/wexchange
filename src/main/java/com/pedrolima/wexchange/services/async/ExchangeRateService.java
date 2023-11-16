@@ -70,7 +70,7 @@ public class ExchangeRateService {
 
     @Async
     @Retryable(retryFor = {RetryableException.class}, backoff = @Backoff(delay = 2000), maxAttempts = 5)
-    public void updateExchangeRates(PurchaseJpaEntity purchase) {
+    public void updateExchangeRates(final PurchaseJpaEntity purchase) {
 
         final var apiUri = buildUri(purchase);
         final var request = buildHttpRequest(apiUri);
