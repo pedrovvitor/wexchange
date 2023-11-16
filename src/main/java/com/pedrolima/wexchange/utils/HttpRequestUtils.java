@@ -8,15 +8,10 @@ import java.net.http.HttpResponse;
 
 public final class HttpRequestUtils {
 
-    private HttpRequestUtils() {
-
-    }
+    private HttpRequestUtils() {}
 
     public static HttpRequest buildHttpRequest(String url) {
-        return HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .GET()
-                .build();
+        return HttpRequest.newBuilder().uri(URI.create(url)).GET().build();
     }
 
     public static HttpResponse<String> sendRequest(HttpRequest request) throws IOException, InterruptedException {

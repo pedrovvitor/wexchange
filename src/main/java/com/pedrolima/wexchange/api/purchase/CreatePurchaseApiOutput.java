@@ -11,7 +11,6 @@ public record CreatePurchaseApiOutput(
         String description,
         String date,
         BigDecimal amount,
-
         List<ApiLink> links
 ) {
 

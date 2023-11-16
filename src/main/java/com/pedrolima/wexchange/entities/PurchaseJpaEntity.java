@@ -25,6 +25,7 @@ public class PurchaseJpaEntity {
 
     @Column(name = "date", nullable = false)
     private LocalDate date;
+
     @Column(name = "amount", nullable = false)
     private BigDecimal amount;
 
@@ -43,9 +44,11 @@ public class PurchaseJpaEntity {
         this.createdAt = now;
         this.updatedAt = now;
     }
+
     public PurchaseJpaEntity() {
 
     }
+
     public static PurchaseJpaEntity newPurchase(final String description, final LocalDate date, final BigDecimal amount) {
         return new PurchaseJpaEntity(description, date, amount);
     }
@@ -57,6 +60,7 @@ public class PurchaseJpaEntity {
         final PurchaseJpaEntity purchase = (PurchaseJpaEntity) o;
         return Objects.equals(id, purchase.id);
     }
+
     @Override
     public int hashCode() {
         return Objects.hash(id);

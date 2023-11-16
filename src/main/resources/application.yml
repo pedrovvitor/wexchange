@@ -10,9 +10,9 @@ server:
 #      io: 4 # One ID thread per CPU core is a reasonable default: https://undertow.io/undertow-docs/undertow-docs-2.1.0/index.html#listeners-2
 spring:
   datasource:
-    url: jdbc:postgres://${postgres.url}/${postgres.schema}?useSSL=true&serverTimezone=UTC&characterEncoding=UTF-8
-    username: ${postgres.username}
-    password: ${postgres.password}
+    url: ${DATABASE_POSTGRES_URL}?useSSL=true&serverTimezone=UTC&characterEncoding=UTF-8
+    username: ${DATABASE_POSTGRES_USERNAME}
+    password: ${DATABASE_POSTGRES_PASSWORD}
     hikari:
       auto-commit: false
       connection-timeout: 250 # Ms config. The ideal is maintaining this low to provide a fast timeout without retaining the thread for long periods.
@@ -29,6 +29,8 @@ spring:
       "[hibernate.connection.provider_disables_autocommit]": true
       # To improve the performance to the max, disable the auto-commit and the open-in-view
       # https://vladmihalcea.com/why-you-should-always-use-hibernate-connection-provider_disables_autocommit-for-resource-local-jpa-transactions/
+  profiles:
+    active: production
 
 fiscal:
   service:

@@ -90,6 +90,7 @@ public class ScheduledFiscalDataUpdateService {
             throw new RetryableException("Failed to communicate with fiscaldata api", e);
         }
     }
+
     private void saveCountryCurrencies(final List<CountryCurrency> countryCurrencies) {
         final var fiscalDataApiCountryCurrencies =
                 countryCurrencies.stream()

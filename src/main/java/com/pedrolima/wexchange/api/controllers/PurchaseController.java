@@ -20,6 +20,7 @@ public class PurchaseController implements PurchaseApi {
     private final CreatePurchaseUseCase createPurchaseUseCase;
 
     private final ConvertPurchaseUseCase convertPurchaseUseCase;
+
     @Override
     public ResponseEntity<CreatePurchaseApiOutput> createPurchase(final CreatePurchaseApiInput input) {
         final var output = createPurchaseUseCase.execute(input);

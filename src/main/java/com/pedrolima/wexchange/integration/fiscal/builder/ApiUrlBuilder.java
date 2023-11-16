@@ -10,10 +10,15 @@ import java.util.stream.Collectors;
 public class ApiUrlBuilder {
 
     public static final int PAGE_SIZE_MAX_VALUE = 10000;
+
     private final StringBuilder urlBuilder;
+
     private final List<String> fields;
+
     private final List<String> filters;
+
     private final List<String> sorts;
+
     private boolean firstParam;
 
     public ApiUrlBuilder(String baseUrl) {

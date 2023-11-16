@@ -10,11 +10,13 @@ import java.util.Objects;
 public class ConversionRateCompositeKey implements Serializable {
 
     private String countryCurrency;
+
     private LocalDate effectiveDate;
 
     public ConversionRateCompositeKey() {
 
     }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) return true;
@@ -22,6 +24,7 @@ public class ConversionRateCompositeKey implements Serializable {
         final ConversionRateCompositeKey that = (ConversionRateCompositeKey) o;
         return Objects.equals(countryCurrency, that.countryCurrency) && Objects.equals(effectiveDate, that.effectiveDate);
     }
+
     @Override
     public int hashCode() {
         return Objects.hash(countryCurrency, effectiveDate);

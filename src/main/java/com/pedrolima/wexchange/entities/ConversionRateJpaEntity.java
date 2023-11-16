@@ -1,6 +1,7 @@
 package com.pedrolima.wexchange.entities;
 
 import com.pedrolima.wexchange.integration.fiscal.bean.ConversionRate;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
@@ -17,11 +18,14 @@ import java.time.LocalDate;
 public class ConversionRateJpaEntity {
 
     @Id
+    @Column(name = "country_currency")
     private String countryCurrency;
 
     @Id
+    @Column(name = "effective_date")
     private LocalDate effectiveDate;
 
+    @Column(name = "exchange_rate")
     private BigDecimal exchangeRate;
 
     public ConversionRateJpaEntity() {

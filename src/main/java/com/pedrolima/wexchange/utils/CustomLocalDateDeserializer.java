@@ -28,6 +28,7 @@ public class CustomLocalDateDeserializer extends JsonDeserializer<LocalDate> {
             log.error("Unable to parse {} {}", parser, e.toString());
             throw new DeserializationException("Unable to parse 'date' input");
         } catch (DateTimeParseException e) {
+            log.error("Unable to parse {} {}", parser, e.toString());
             throw new DeserializationException(e.getMessage());
         }
     }

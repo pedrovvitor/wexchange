@@ -3,10 +3,7 @@ package com.pedrolima.wexchange.api;
 import com.pedrolima.wexchange.api.purchase.ConvertPurchaseApiOutput;
 import com.pedrolima.wexchange.api.purchase.CreatePurchaseApiInput;
 import com.pedrolima.wexchange.api.purchase.CreatePurchaseApiOutput;
-import com.pedrolima.wexchange.exceptions.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,8 +32,6 @@ public interface PurchaseApi {
     @Operation(summary = "Create a new Purchase")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Created successfully"),
-            @ApiResponse(responseCode = "422", description = "A validation error was thrown", content =
-            @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "An internal server error was thrown")
     })
     ResponseEntity<CreatePurchaseApiOutput> createPurchase(@RequestBody @Valid CreatePurchaseApiInput input);

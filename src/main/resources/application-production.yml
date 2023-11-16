@@ -1,9 +1,3 @@
-mysql:
-  username: ${DATABASE_POSTGRES_USERNAME:root}
-  password: ${DATABASE_POSTGRES_PASSWORD:123456}
-  schema: wexchange
-  url: ${DATABASE_POSTGRES_URL:localhost:3306}
-
 spring:
   jpa:
     show-sql: false

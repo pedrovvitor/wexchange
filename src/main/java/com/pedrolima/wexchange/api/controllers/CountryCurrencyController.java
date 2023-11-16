@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CountryCurrencyController implements CountryCurrencyApi {
 
     private final CountryCurrenciesService countryCurrenciesService;
+
     @Override
     public ResponseEntity<CountryCurrencyOutput> findAll(String countryCurrency) {
         return ResponseEntity.ok(countryCurrenciesService.findAllCountryCurrencies(countryCurrency));

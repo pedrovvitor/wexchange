@@ -23,5 +23,5 @@ public interface CountryCurrencyApi {
             @ApiResponse(responseCode = "200", description = "Purchase conversion was successful"),
             @ApiResponse(responseCode = "500", description = "An internal server error was thrown")
     })
-    ResponseEntity<CountryCurrencyOutput> findAll(@RequestParam(required = false) String countryCurrency);
+    ResponseEntity<CountryCurrencyOutput> findAll(@RequestParam(name = "country_currency") String countryCurrency);
 }

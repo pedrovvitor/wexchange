@@ -1,6 +1,7 @@
 package com.pedrolima.wexchange.entities;
 
 import com.pedrolima.wexchange.integration.fiscal.bean.CountryCurrency;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -14,10 +15,13 @@ import java.util.Objects;
 public class CountryCurrencyJpaEntity {
 
     @Id
+    @Column(name = "country_currency")
     private String countryCurrency;
 
+    @Column(name = "country")
     private String country;
 
+    @Column(name = "currency")
     private String currency;
 
     public CountryCurrencyJpaEntity() {
@@ -28,6 +32,7 @@ public class CountryCurrencyJpaEntity {
         this.country = country;
         this.currency = currency;
     }
+
     public static CountryCurrencyJpaEntity with(CountryCurrency apiCountryCurrency) {
         return new CountryCurrencyJpaEntity(
                 apiCountryCurrency.countryCurrency(),
@@ -42,6 +47,7 @@ public class CountryCurrencyJpaEntity {
         final CountryCurrencyJpaEntity that = (CountryCurrencyJpaEntity) o;
         return Objects.equals(countryCurrency, that.countryCurrency);
     }
+
     @Override
     public int hashCode() {
         return Objects.hash(countryCurrency);

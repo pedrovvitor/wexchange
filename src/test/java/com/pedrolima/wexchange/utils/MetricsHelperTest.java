@@ -13,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class MetricsHelperTest {
 
     private MetricsHelper metricsHelper;
+
     private SimpleMeterRegistry meterRegistry;
 
     @BeforeEach
@@ -26,7 +27,7 @@ public class MetricsHelperTest {
         long time = 1000;
         metricsHelper.registryFiscalServiceRetrievalElapsedTime(time);
 
-        Timer timer = meterRegistry.find("wexchange.application.exchange.rate.retrieval.time").timer();
+        Timer timer = meterRegistry.find("wexchange.application.fiscal.service.retrieval.time").timer();
         assertThat(timer).isNotNull();
         assertThat(timer.count()).isEqualTo(1);
         assertThat(timer.totalTime(TimeUnit.NANOSECONDS)).isEqualTo(time);
