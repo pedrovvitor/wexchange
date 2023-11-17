@@ -57,7 +57,7 @@ import static com.pedrolima.wexchange.integration.fiscal.builders.ApiUrlBuilder.
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class CurrencyExchangeUpdaterService {
+public class CountryCurrencyUpdaterService {
 
     public static final int ONE_DAY_MS = 86400000;
 

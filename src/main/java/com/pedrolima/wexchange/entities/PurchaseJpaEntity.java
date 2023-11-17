@@ -7,6 +7,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Objects;
@@ -23,10 +24,10 @@ public class PurchaseJpaEntity {
     @Column(name = "description", nullable = false, length = 50)
     private String description;
 
-    @Column(name = "date", nullable = false)
-    private LocalDate date;
+    @Column(name = "purchase_date", nullable = false)
+    private LocalDate purchaseDate;
 
-    @Column(name = "amount", nullable = false)
+    @Column(name = "amount", nullable = false, precision = 14, scale = 2)
     private BigDecimal amount;
 
     @Column(name = "created_at", nullable = false, columnDefinition = "DATETIME(6)")
@@ -35,12 +36,12 @@ public class PurchaseJpaEntity {
     @Column(name = "updated_at", nullable = false, columnDefinition = "DATETIME(6)")
     private Instant updatedAt;
 
-    public PurchaseJpaEntity(final String description, final LocalDate date, final BigDecimal amount) {
+    private PurchaseJpaEntity(final String description, final LocalDate purchaseDate, final BigDecimal amount) {
         final var now = Instant.now();
         this.id = UUID.randomUUID().toString();
         this.description = description;
-        this.date = date;
-        this.amount = amount;
+        this.purchaseDate = purchaseDate;
+        this.amount = amount.setScale(2, RoundingMode.HALF_EVEN);
         this.createdAt = now;
         this.updatedAt = now;
     }

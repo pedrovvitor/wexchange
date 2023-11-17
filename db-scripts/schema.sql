@@ -6,8 +6,8 @@ create table if not exists purchase
 ) not null primary key,
     description VARCHAR
     (50) not null,
-    date DATE not null,
-    amount NUMERIC not null,
+    purchase_date DATE not null,
+    amount NUMERIC(14, 2) NOT NULL,
     created_at TIMESTAMP
     (6) not null,
     updated_at TIMESTAMP

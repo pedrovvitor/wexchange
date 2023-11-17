@@ -19,6 +19,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -133,7 +134,7 @@ public class DefaultConvertPurchaseUseCase extends ConvertPurchaseUseCase {
         return ConvertPurchaseApiOutput.with(
                 purchase.getId(),
                 purchase.getDescription(),
-                purchase.getDate().toString(),
+                purchase.getPurchaseDate().toString(),
                 purchase.getAmount(),
                 conversionRate.getCountryCurrency(),
                 conversionRate.getRateValue(),
@@ -151,7 +152,7 @@ public class DefaultConvertPurchaseUseCase extends ConvertPurchaseUseCase {
         return List.of(
                 ApiLink.with("purchase", "/v1/purchases",
                         "POST",
-                        convertParams),
+                        Collections.emptyMap()),
                 ApiLink.with("country_currencies", "/v1/country_currencies?country_currency=", "GET", convertParams)
         );
     }

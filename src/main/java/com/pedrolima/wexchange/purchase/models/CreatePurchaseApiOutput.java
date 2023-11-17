@@ -18,7 +18,7 @@ public record CreatePurchaseApiOutput(
         return new CreatePurchaseApiOutput(
                 aPurchase.getId(),
                 aPurchase.getDescription(),
-                aPurchase.getDate().toString(),
+                aPurchase.getPurchaseDate().toString(),
                 aPurchase.getAmount(),
                 links);
     }

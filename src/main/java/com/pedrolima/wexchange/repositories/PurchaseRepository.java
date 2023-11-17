@@ -7,5 +7,5 @@ import java.time.LocalDate;
 
 public interface PurchaseRepository extends JpaRepository<PurchaseJpaEntity, String> {
 
-    long countByDate(LocalDate date);
+    long countByPurchaseDate(LocalDate purchaseDate);
 }

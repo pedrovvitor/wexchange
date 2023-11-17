@@ -41,7 +41,7 @@ public class DefaultCreatePurchaseUseCase extends CreatePurchaseUseCase {
         final var purchase = PurchaseJpaEntity.newPurchase(input.description(), input.date(), input.amount());
         final var purchaseJpaEntity = purchaseRepository.save(purchase);
 
-        if (purchaseRepository.countByDate(purchase.getDate()) <= 1) {
+        if (purchaseRepository.countByPurchaseDate(purchase.getPurchaseDate()) <= 1) {
             exchangeRateService.updateExchangeRates(purchaseJpaEntity);
         }
 

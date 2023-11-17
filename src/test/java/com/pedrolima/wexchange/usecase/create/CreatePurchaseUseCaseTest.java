@@ -14,6 +14,7 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -39,13 +40,13 @@ public class CreatePurchaseUseCaseTest {
     void givenValidFirstPurchaseOfTheDate_whenCreatePurchase_thenPersistPurchaseAndUpdateExchangeRatesAndReturnDetails() {
         final var description = "Test Purchase";
         final var date = LocalDate.now();
-        final var amount = BigDecimal.valueOf(100.0);
+        final var amount = BigDecimal.valueOf(100.0).setScale(2, RoundingMode.HALF_EVEN);
         final var input = new CreatePurchaseApiInput(description, date, amount);
 
-        final var expectedPurchase = new PurchaseJpaEntity(description, date, amount);
+        final var expectedPurchase = PurchaseJpaEntity.newPurchase(description, date, amount);
         when(purchaseRepository.save(any(PurchaseJpaEntity.class))).thenReturn(expectedPurchase);
         Mockito.doNothing().when(exchangeRateService).updateExchangeRates(expectedPurchase);
-        when(purchaseRepository.countByDate(date)).thenReturn(1L);
+        when(purchaseRepository.countByPurchaseDate(date)).thenReturn(1L);
 
         CreatePurchaseApiOutput result = createPurchaseUseCase.execute(input);
 
@@ -61,12 +62,12 @@ public class CreatePurchaseUseCaseTest {
     void givenNotFirstPurchaseOfTheDate_whenCreatePurchase_thenPersistPurchaseWithoutUpdatingExchangeRatesAndReturnDetails() {
         final var description = "Test Purchase";
         final var date = LocalDate.now();
-        final var amount = BigDecimal.valueOf(100.0);
+        final var amount = BigDecimal.valueOf(100.0).setScale(2, RoundingMode.HALF_EVEN);;
         final var input = new CreatePurchaseApiInput(description, date, amount);
 
-        final var expectedPurchase = new PurchaseJpaEntity(description, date, amount);
+        final var expectedPurchase = PurchaseJpaEntity.newPurchase(description, date, amount);
         when(purchaseRepository.save(any(PurchaseJpaEntity.class))).thenReturn(expectedPurchase);
-        when(purchaseRepository.countByDate(date)).thenReturn(2L);
+        when(purchaseRepository.countByPurchaseDate(date)).thenReturn(2L);
 
         CreatePurchaseApiOutput result = createPurchaseUseCase.execute(input);
 

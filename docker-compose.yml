@@ -2,7 +2,11 @@ version: '3.8'
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+        - .env.local
     image: wexchange_app
     ports:
       - "8080:8080"
@@ -10,11 +14,6 @@ services:
       - postgres
     networks:
       - wexchange_network
-    environment:
-      DATABASE_POSTGRES_USERNAME: postgres
-      DATABASE_POSTGRES_PASSWORD: SomeSecuredPassword
-      DATABASE_POSTGRES_URL: jdbc:postgresql://postgres:5432/wexchange
-      SPRING_PROFILES_ACTIVE: production
 
   postgres:
     image: postgres:latest

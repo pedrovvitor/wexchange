@@ -140,7 +140,7 @@ public class ConvertPurchaseUseCaseTest {
     @Test
     void givenMultipleExchangeRatesFound_whenExecute_thenThrowMultipleCountryCurrenciesException() {
         final var input = new ConvertPurchaseApiInput(UUID.randomUUID().toString(), "Brazil-Real");
-        final var purchase = new PurchaseJpaEntity("Test Purchase", LocalDate.now(), BigDecimal.valueOf(100));
+        final var purchase = PurchaseJpaEntity.newPurchase("Test Purchase", LocalDate.now(), BigDecimal.valueOf(100));
         final var rate1 = new ExchangeRateJpaEntity();
         final var rate2 = new ExchangeRateJpaEntity();
 
@@ -159,7 +159,7 @@ public class ConvertPurchaseUseCaseTest {
     void givenValidInput_whenCallsExecute_thenReturnConvertedPurchaseDetails() {
         final var aDescription = "Test Purchase";
         final var aDate = LocalDate.now();
-        final var anAmount = BigDecimal.valueOf(150);
+        final var anAmount = BigDecimal.valueOf(150).setScale(2, RoundingMode.HALF_EVEN);
         final var purchase = PurchaseJpaEntity.newPurchase(aDescription, aDate, anAmount);
 
         final var aCountryCurrency = "Brazil-Real";
@@ -182,7 +182,7 @@ public class ConvertPurchaseUseCaseTest {
                 anAmount,
                 aConversionRate,
                 anEffectiveDate.toString(),
-                anAmount.multiply(aConversionRate).setScale(2, RoundingMode.HALF_UP),
+                anAmount.multiply(aConversionRate).setScale(2, RoundingMode.HALF_EVEN),
                 Collections.emptyList()
         );
 

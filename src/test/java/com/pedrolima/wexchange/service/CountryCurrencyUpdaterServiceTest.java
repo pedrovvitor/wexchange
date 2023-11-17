@@ -1,10 +1,9 @@
 package com.pedrolima.wexchange.service;
 
 import com.pedrolima.wexchange.exceptions.RetryableException;
-import com.pedrolima.wexchange.integration.fiscal.beans.CountryCurrency;
 import com.pedrolima.wexchange.integration.fiscal.beans.CountryCurrencyInput;
 import com.pedrolima.wexchange.repositories.CountryCurrencyRepository;
-import com.pedrolima.wexchange.services.scheduled.CurrencyExchangeUpdaterService;
+import com.pedrolima.wexchange.services.scheduled.CountryCurrencyUpdaterService;
 import com.pedrolima.wexchange.utils.JsonUtils;
 import com.pedrolima.wexchange.utils.MetricsHelper;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,7 +33,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class CurrencyExchangeUpdaterServiceTest {
+public class CountryCurrencyUpdaterServiceTest {
 
     @Mock
     private CountryCurrencyRepository repository;
@@ -46,14 +45,14 @@ public class CurrencyExchangeUpdaterServiceTest {
     private HttpClient httpClient;
 
     @InjectMocks
-    private CurrencyExchangeUpdaterService currencyExchangeUpdaterService;
+    private CountryCurrencyUpdaterService countryCurrencyUpdaterService;
 
     private HttpResponse<String> response;
 
     @BeforeEach
     void setUp() {
         response = Mockito.mock(HttpResponse.class);
-        ReflectionTestUtils.setField(currencyExchangeUpdaterService, "exchangeApiUrl", "http://mocked.api.url");
+        ReflectionTestUtils.setField(countryCurrencyUpdaterService, "exchangeApiUrl", "http://mocked.api.url");
     }
 
     @Test
@@ -71,7 +70,7 @@ public class CurrencyExchangeUpdaterServiceTest {
             jsonUtilsMockedStatic.when(() -> JsonUtils.extractDataList(anyString(), any()))
                     .thenReturn(List.of(aCountryCurrencyInput));
 
-            currencyExchangeUpdaterService.synchronizeCountryCurrencies();
+            countryCurrencyUpdaterService.synchronizeCountryCurrencies();
 
             verify(repository, times(1)).saveAll(any());
             verify(metricsHelper, never()).incrementParsingErrorMetric();
@@ -87,7 +86,7 @@ public class CurrencyExchangeUpdaterServiceTest {
                 any(HttpResponse.BodyHandlers.ofString().getClass())))
                 .thenReturn(response);
 
-        assertThrows(RetryableException.class, () -> currencyExchangeUpdaterService.synchronizeCountryCurrencies());
+        assertThrows(RetryableException.class, () -> countryCurrencyUpdaterService.synchronizeCountryCurrencies());
         verify(repository, never()).saveAll(any());
         verify(metricsHelper, never()).incrementParsingErrorMetric();
         verify(metricsHelper, times(1)).registryFiscalServiceRetrievalElapsedTime(anyLong());
@@ -97,7 +96,7 @@ public class CurrencyExchangeUpdaterServiceTest {
     void whenUpdateAllExchangeRates_andIOExceptionOccurs_thenThrowRetryableException() throws IOException, InterruptedException {
         when(httpClient.send(any(HttpRequest.class), any())).thenThrow(IOException.class);
 
-        assertThrows(RetryableException.class, () -> currencyExchangeUpdaterService.synchronizeCountryCurrencies());
+        assertThrows(RetryableException.class, () -> countryCurrencyUpdaterService.synchronizeCountryCurrencies());
         verify(repository, never()).saveAll(any());
         verify(metricsHelper, never()).incrementParsingErrorMetric();
     }

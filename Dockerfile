@@ -1,9 +1,15 @@
+# build stage
+FROM gradle:8.4-jdk17-alpine AS builder
+
+WORKDIR /usr/app/
+
+COPY . .
+
+RUN gradle bootJar
+
+# build runtime
 FROM openjdk:17-jdk-alpine
 
-LABEL maintainer="pedrojppb@gmail.com"
+COPY --from=builder /usr/app/build/libs/*.jar /opt/app/application.jar
 
-ARG JAR_FILE=build/libs/wexchange-1.0-SNAPSHOT.jar
-
-COPY ${JAR_FILE} wexchange.jar
-
-ENTRYPOINT ["java", "-jar", "wexchange.jar"]
+CMD java -jar /opt/app/application.jar

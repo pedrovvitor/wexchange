@@ -13,12 +13,12 @@ public final class ConversionUtils {
     }
 
     public static Pair<LocalDate, LocalDate> calculateConversionAvailablePeriod(final PurchaseJpaEntity purchase) {
-        final var sixMonthsBefore = purchase.getDate().minusMonths(6);
-        return Pair.of(sixMonthsBefore, purchase.getDate());
+        final var sixMonthsBefore = purchase.getPurchaseDate().minusMonths(6);
+        return Pair.of(sixMonthsBefore, purchase.getPurchaseDate());
     }
 
     public static BigDecimal calculateConvertedAmount(final PurchaseJpaEntity purchase, final BigDecimal exchangeRate) {
         return purchase.getAmount().multiply(exchangeRate)
-                .setScale(2, RoundingMode.HALF_UP);
+                .setScale(2, RoundingMode.HALF_EVEN);
     }
 }

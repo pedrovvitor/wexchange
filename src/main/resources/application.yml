@@ -33,8 +33,8 @@ fiscal:
   service:
     api:
       endpoint: "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/od/rates_of_exchange"
-management:
-  endpoints:
-    web:
-      exposure:
-        include: prometheus,health,info,metrics
+#management:
+#  endpoints:
+#    web:
+#      exposure:
+#        include: prometheus,health,info,metrics should be exposed with restricted access
