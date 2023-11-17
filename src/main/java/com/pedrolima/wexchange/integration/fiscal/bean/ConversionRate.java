@@ -14,7 +14,7 @@ public record ConversionRate(
     public static ConversionRate with(
             final BigDecimal anExchangeRate,
             final LocalDate anEffectiveDate,
-            final String aCountrycurrency) {
-        return new ConversionRate(anExchangeRate, anEffectiveDate, aCountrycurrency);
+            final String aCountryCurrency) {
+        return new ConversionRate(anExchangeRate, anEffectiveDate, aCountryCurrency);
     }
 }

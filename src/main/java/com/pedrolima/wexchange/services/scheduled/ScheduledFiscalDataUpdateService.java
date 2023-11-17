@@ -141,7 +141,7 @@ public class ScheduledFiscalDataUpdateService {
                 .build();
     }
 
-    private static int getRetryCount() {
+    private int getRetryCount() {
         final var context = RetrySynchronizationManager.getContext();
         return (context != null) ? context.getRetryCount() : 0;
     }

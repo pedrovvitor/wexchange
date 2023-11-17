@@ -12,12 +12,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.time.StopWatch;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
+import org.springframework.retry.support.RetrySynchronizationManager;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.LinkedHashMap;
@@ -35,7 +38,6 @@ import static com.pedrolima.wexchange.integration.fiscal.builder.ApiUrlBuilder.P
 import static com.pedrolima.wexchange.integration.fiscal.builder.ApiUrlBuilder.SortOrder.DESC;
 import static com.pedrolima.wexchange.utils.ConversionUtils.calculateConversionAvailablePeriod;
 import static com.pedrolima.wexchange.utils.HttpRequestUtils.buildHttpRequest;
-import static com.pedrolima.wexchange.utils.HttpRequestUtils.sendRequest;
 
 /**
  * Service for updating exchange rates in response to new purchase registrations.
@@ -68,6 +70,8 @@ public class ExchangeRateService {
 
     private final MetricsHelper metricsHelper;
 
+    private final HttpClient httpClient;
+
     @Async
     @Retryable(retryFor = {RetryableException.class}, backoff = @Backoff(delay = 2000), maxAttempts = 5)
     public void updateExchangeRates(final PurchaseJpaEntity purchase) {
@@ -77,14 +81,20 @@ public class ExchangeRateService {
 
         try {
             final var response = sendRequestWithMetrics(request);
-            final var conversionRateJpaEntities = processAndFilterConversionRate(response);
 
-            if (!conversionRateJpaEntities.isEmpty()) {
-                conversionRateRepository.saveAll(conversionRateJpaEntities);
+            if (response.statusCode() == HttpStatus.OK.value()) {
+                final var conversionRateJpaEntities = processAndFilterConversionRate(response);
+
+                if (!conversionRateJpaEntities.isEmpty()) {
+                    conversionRateRepository.saveAll(conversionRateJpaEntities);
+                }
+            } else {
+                log.warn("Unexpected response status: {} - Retry attempt: {}", response.statusCode(), getRetryCount());
+                throw new RetryableException("Unexpected response from API");
             }
         } catch (IOException | InterruptedException e) {
             metricsHelper.incrementRequestErrorMetric();
-            log.error("Error occurred: {}", e.toString());
+            log.error("Error occurred: {} - Retry attempt: {}", e, getRetryCount());
             throw new RetryableException("Error processing request.", e);
         }
     }
@@ -132,5 +142,14 @@ public class ExchangeRateService {
                 conversionRate.getCountryCurrency(),
                 conversionRate.getEffectiveDate()
         );
+    }
+
+    private HttpResponse<String> sendRequest(final HttpRequest request) throws IOException, InterruptedException {
+        return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private int getRetryCount() {
+        final var context = RetrySynchronizationManager.getContext();
+        return (context != null) ? context.getRetryCount() : 0;
     }
 }

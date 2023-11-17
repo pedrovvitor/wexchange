@@ -30,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -57,8 +58,8 @@ public class ConvertPurchaseUseCaseTest {
                 assertThrows(IllegalArgumentException.class, () -> convertPurchaseUseCase.execute(input));
 
         assertEquals(expectedExceptionMessage, actualException.getMessage());
-        verify(purchaseRepository, times(0)).findById(anyString());
-        verify(conversionRateRepository, times(0))
+        verify(purchaseRepository, never()).findById(anyString());
+        verify(conversionRateRepository, never())
                 .findLatestRatesByCountryCurrencyAndDateRange(anyString(), any(), any());
     }
 
@@ -77,8 +78,8 @@ public class ConvertPurchaseUseCaseTest {
                 assertThrows(IllegalArgumentException.class, () -> convertPurchaseUseCase.execute(input));
 
         assertEquals(expectedExceptionMessage, actualException.getMessage());
-        verify(purchaseRepository, times(0)).findById(anyString());
-        verify(conversionRateRepository, times(0))
+        verify(purchaseRepository, never()).findById(anyString());
+        verify(conversionRateRepository, never())
                 .findLatestRatesByCountryCurrencyAndDateRange(anyString(), any(), any());
     }
 
@@ -91,8 +92,8 @@ public class ConvertPurchaseUseCaseTest {
                 assertThrows(IllegalArgumentException.class, () -> convertPurchaseUseCase.execute(input));
 
         assertEquals(expectedExceptionMessage, actualException.getMessage());
-        verify(purchaseRepository, times(0)).findById(anyString());
-        verify(conversionRateRepository, times(0))
+        verify(purchaseRepository, never()).findById(anyString());
+        verify(conversionRateRepository, never())
                 .findLatestRatesByCountryCurrencyAndDateRange(anyString(), any(), any());
     }
 
@@ -107,9 +108,9 @@ public class ConvertPurchaseUseCaseTest {
 
         assertEquals(expectedExceptionMessage, actualException.getMessage());
         verify(purchaseRepository, times(1)).findById(anyString());
-        verify(conversionRateRepository, times(0))
+        verify(conversionRateRepository, never())
                 .findLatestRatesByCountryCurrencyAndDateRange(anyString(), any(), any());
-        verify(exchangeRateService, times(0)).updateExchangeRates(any(PurchaseJpaEntity.class));
+        verify(exchangeRateService, never()).updateExchangeRates(any(PurchaseJpaEntity.class));
     }
 
     @Test
@@ -151,7 +152,7 @@ public class ConvertPurchaseUseCaseTest {
         verify(purchaseRepository, times(1)).findById(anyString());
         verify(conversionRateRepository, times(1))
                 .findLatestRatesByCountryCurrencyAndDateRange(anyString(), any(LocalDate.class), any(LocalDate.class));
-        verify(exchangeRateService, times(0)).updateExchangeRates(any(PurchaseJpaEntity.class));
+        verify(exchangeRateService, never()).updateExchangeRates(any(PurchaseJpaEntity.class));
     }
 
     @Test
@@ -202,7 +203,7 @@ public class ConvertPurchaseUseCaseTest {
         verify(purchaseRepository, times(1)).findById(anyString());
         verify(conversionRateRepository, times(1))
                 .findLatestRatesByCountryCurrencyAndDateRange(anyString(), any(LocalDate.class), any(LocalDate.class));
-        verify(exchangeRateService, times(0)).updateExchangeRates(any(PurchaseJpaEntity.class));
+        verify(exchangeRateService, never()).updateExchangeRates(any(PurchaseJpaEntity.class));
     }
 }
 
