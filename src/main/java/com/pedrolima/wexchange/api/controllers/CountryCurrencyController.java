@@ -1,7 +1,7 @@
 package com.pedrolima.wexchange.api.controllers;
 
 import com.pedrolima.wexchange.api.CountryCurrencyApi;
-import com.pedrolima.wexchange.bean.exchange.CountryCurrencyOutput;
+import com.pedrolima.wexchange.integration.fiscal.beans.CountryCurrencyOutput;
 import com.pedrolima.wexchange.services.CountryCurrencyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;

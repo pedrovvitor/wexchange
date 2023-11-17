@@ -1,6 +1,6 @@
 package com.pedrolima.wexchange.entities;
 
-import com.pedrolima.wexchange.integration.fiscal.bean.CountryCurrency;
+import com.pedrolima.wexchange.integration.fiscal.beans.CountryCurrencyInput;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -14,7 +14,7 @@ public class CountryCurrencyJpaEntityTest {
         final var currency = "Real";
 
         CountryCurrencyJpaEntity countryCurrencyJpaEntity = CountryCurrencyJpaEntity.with(
-                new CountryCurrency(countryCurrency, country, currency));
+                new CountryCurrencyInput(countryCurrency, country, currency));
 
         assertEquals(countryCurrency, countryCurrencyJpaEntity.getCountryCurrency());
         assertEquals(country, countryCurrencyJpaEntity.getCountry());

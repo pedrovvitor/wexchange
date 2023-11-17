@@ -1,4 +1,4 @@
-package com.pedrolima.wexchange.configuration;
+package com.pedrolima.wexchange.configurations;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;

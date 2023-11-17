@@ -1,8 +1,8 @@
 package com.pedrolima.wexchange.services;
 
 import com.pedrolima.wexchange.api.ApiLink;
-import com.pedrolima.wexchange.bean.exchange.CountryCurrencyOutput;
-import com.pedrolima.wexchange.integration.fiscal.bean.CountryCurrency;
+import com.pedrolima.wexchange.integration.fiscal.beans.CountryCurrency;
+import com.pedrolima.wexchange.integration.fiscal.beans.CountryCurrencyOutput;
 import com.pedrolima.wexchange.repositories.CountryCurrencyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +28,7 @@ public class CountryCurrencyService {
             countryCurrencies = repository.findAll(pageable)
                     .map(CountryCurrency::with);
         } else {
-            countryCurrencies = repository.findAllContainingIgnoreCase(pageable, countryCurrency)
+            countryCurrencies = repository.findAllContainingCountryCurrencyIgnoreCase(pageable, countryCurrency)
                     .map(CountryCurrency::with);
         }
         final var convertParams = Map.of(

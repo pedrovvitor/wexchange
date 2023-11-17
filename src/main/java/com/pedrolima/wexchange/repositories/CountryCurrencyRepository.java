@@ -13,5 +13,5 @@ public interface CountryCurrencyRepository extends JpaRepository<CountryCurrency
     boolean notExistsByCountryCurrency(String countryCurrency);
 
     @Query("SELECT c FROM CountryCurrencyJpaEntity c WHERE LOWER(c.countryCurrency) LIKE LOWER(CONCAT('%', :country_currency, '%'))")
-    Page<CountryCurrencyJpaEntity> findAllContainingIgnoreCase(Pageable pageable, @Param("country_currency") String countryCurrency);
+    Page<CountryCurrencyJpaEntity> findAllContainingCountryCurrencyIgnoreCase(Pageable pageable, @Param("country_currency") String countryCurrency);
 }

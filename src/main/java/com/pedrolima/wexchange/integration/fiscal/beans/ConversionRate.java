@@ -1,4 +1,4 @@
-package com.pedrolima.wexchange.integration.fiscal.bean;
+package com.pedrolima.wexchange.integration.fiscal.beans;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

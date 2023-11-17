@@ -2,7 +2,7 @@ package com.pedrolima.wexchange.service;
 
 import com.pedrolima.wexchange.entities.PurchaseJpaEntity;
 import com.pedrolima.wexchange.exceptions.RetryableException;
-import com.pedrolima.wexchange.integration.fiscal.bean.ConversionRate;
+import com.pedrolima.wexchange.integration.fiscal.beans.ConversionRate;
 import com.pedrolima.wexchange.repositories.ExchangeRateRepository;
 import com.pedrolima.wexchange.services.async.ExchangeRateService;
 import com.pedrolima.wexchange.utils.JsonUtils;

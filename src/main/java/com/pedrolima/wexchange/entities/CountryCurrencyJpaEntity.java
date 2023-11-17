@@ -1,6 +1,6 @@
 package com.pedrolima.wexchange.entities;
 
-import com.pedrolima.wexchange.integration.fiscal.bean.CountryCurrency;
+import com.pedrolima.wexchange.integration.fiscal.beans.CountryCurrencyInput;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -33,11 +33,11 @@ public class CountryCurrencyJpaEntity {
         this.currency = currency;
     }
 
-    public static CountryCurrencyJpaEntity with(final CountryCurrency apiCountryCurrency) {
+    public static CountryCurrencyJpaEntity with(final CountryCurrencyInput fiscalDataApiCountryCurrency) {
         return new CountryCurrencyJpaEntity(
-                apiCountryCurrency.countryCurrency(),
-                apiCountryCurrency.country(),
-                apiCountryCurrency.currency());
+                fiscalDataApiCountryCurrency.countryCurrency(),
+                fiscalDataApiCountryCurrency.country(),
+                fiscalDataApiCountryCurrency.currency());
     }
 
     @Override

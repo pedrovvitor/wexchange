@@ -1,8 +1,8 @@
 package com.pedrolima.wexchange.api;
 
-import com.pedrolima.wexchange.api.purchase.ConvertPurchaseApiOutput;
-import com.pedrolima.wexchange.api.purchase.CreatePurchaseApiInput;
-import com.pedrolima.wexchange.api.purchase.CreatePurchaseApiOutput;
+import com.pedrolima.wexchange.purchase.models.ConvertPurchaseApiOutput;
+import com.pedrolima.wexchange.purchase.models.CreatePurchaseApiInput;
+import com.pedrolima.wexchange.purchase.models.CreatePurchaseApiOutput;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

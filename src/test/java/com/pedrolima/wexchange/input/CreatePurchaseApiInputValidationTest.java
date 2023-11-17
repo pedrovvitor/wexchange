@@ -1,6 +1,6 @@
 package com.pedrolima.wexchange.input;
 
-import com.pedrolima.wexchange.api.purchase.CreatePurchaseApiInput;
+import com.pedrolima.wexchange.purchase.models.CreatePurchaseApiInput;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;

@@ -1,4 +1,4 @@
-package com.pedrolima.wexchange.integration.fiscal.builder;
+package com.pedrolima.wexchange.integration.fiscal.builders;
 
 import lombok.Getter;
 

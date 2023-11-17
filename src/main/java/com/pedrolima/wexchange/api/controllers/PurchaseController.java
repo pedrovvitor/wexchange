@@ -1,10 +1,10 @@
 package com.pedrolima.wexchange.api.controllers;
 
 import com.pedrolima.wexchange.api.PurchaseApi;
-import com.pedrolima.wexchange.api.purchase.ConvertPurchaseApiInput;
-import com.pedrolima.wexchange.api.purchase.ConvertPurchaseApiOutput;
-import com.pedrolima.wexchange.api.purchase.CreatePurchaseApiInput;
-import com.pedrolima.wexchange.api.purchase.CreatePurchaseApiOutput;
+import com.pedrolima.wexchange.purchase.models.ConvertPurchaseApiInput;
+import com.pedrolima.wexchange.purchase.models.ConvertPurchaseApiOutput;
+import com.pedrolima.wexchange.purchase.models.CreatePurchaseApiInput;
+import com.pedrolima.wexchange.purchase.models.CreatePurchaseApiOutput;
 import com.pedrolima.wexchange.usecases.purchase.convert.ConvertPurchaseUseCase;
 import com.pedrolima.wexchange.usecases.purchase.create.CreatePurchaseUseCase;
 import lombok.RequiredArgsConstructor;

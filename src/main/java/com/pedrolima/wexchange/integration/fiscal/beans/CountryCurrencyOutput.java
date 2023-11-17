@@ -1,7 +1,6 @@
-package com.pedrolima.wexchange.bean.exchange;
+package com.pedrolima.wexchange.integration.fiscal.beans;
 
 import com.pedrolima.wexchange.api.ApiLink;
-import com.pedrolima.wexchange.integration.fiscal.bean.CountryCurrency;
 import org.springframework.data.domain.Page;
 
 import java.util.List;

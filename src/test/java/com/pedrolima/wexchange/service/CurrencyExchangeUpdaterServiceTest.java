@@ -1,7 +1,8 @@
 package com.pedrolima.wexchange.service;
 
 import com.pedrolima.wexchange.exceptions.RetryableException;
-import com.pedrolima.wexchange.integration.fiscal.bean.CountryCurrency;
+import com.pedrolima.wexchange.integration.fiscal.beans.CountryCurrency;
+import com.pedrolima.wexchange.integration.fiscal.beans.CountryCurrencyInput;
 import com.pedrolima.wexchange.repositories.CountryCurrencyRepository;
 import com.pedrolima.wexchange.services.scheduled.CurrencyExchangeUpdaterService;
 import com.pedrolima.wexchange.utils.JsonUtils;
@@ -57,7 +58,8 @@ public class CurrencyExchangeUpdaterServiceTest {
 
     @Test
     void whenUpdateAllExchangeRates_andApiResponseIsOk_thenSaveCountryCurrencies() throws IOException, InterruptedException {
-        final var aCountryCurrency = new CountryCurrency("Brazil-Real", "Brazil", "Real");
+        final var aCountryCurrencyInput =
+                new CountryCurrencyInput("Brazil-Real", "Brazil", "Real");
         when(response.statusCode()).thenReturn(HttpStatus.OK.value());
         when(response.body()).thenReturn("json response");
         when(httpClient.send(
@@ -67,7 +69,7 @@ public class CurrencyExchangeUpdaterServiceTest {
 
         try (MockedStatic<JsonUtils> jsonUtilsMockedStatic = Mockito.mockStatic(JsonUtils.class)) {
             jsonUtilsMockedStatic.when(() -> JsonUtils.extractDataList(anyString(), any()))
-                    .thenReturn(List.of(aCountryCurrency));
+                    .thenReturn(List.of(aCountryCurrencyInput));
 
             currencyExchangeUpdaterService.synchronizeCountryCurrencies();
 

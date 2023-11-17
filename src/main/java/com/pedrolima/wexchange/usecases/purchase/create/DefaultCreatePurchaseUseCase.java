@@ -1,9 +1,9 @@
 package com.pedrolima.wexchange.usecases.purchase.create;
 
 import com.pedrolima.wexchange.api.ApiLink;
-import com.pedrolima.wexchange.api.purchase.CreatePurchaseApiInput;
-import com.pedrolima.wexchange.api.purchase.CreatePurchaseApiOutput;
 import com.pedrolima.wexchange.entities.PurchaseJpaEntity;
+import com.pedrolima.wexchange.purchase.models.CreatePurchaseApiInput;
+import com.pedrolima.wexchange.purchase.models.CreatePurchaseApiOutput;
 import com.pedrolima.wexchange.repositories.PurchaseRepository;
 import com.pedrolima.wexchange.services.async.ExchangeRateService;
 import lombok.RequiredArgsConstructor;

@@ -1,12 +1,11 @@
-package com.pedrolima.wexchange.integration.fiscal.bean;
+package com.pedrolima.wexchange.integration.fiscal.beans;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.pedrolima.wexchange.entities.CountryCurrencyJpaEntity;
 
 public record CountryCurrency(
-        @JsonProperty("country_currency_desc") String countryCurrency,
-        @JsonProperty("country") String country,
-        @JsonProperty("currency") String currency
+        String countryCurrency,
+        String country,
+        String currency
 ) {
 
     public static CountryCurrency with(final CountryCurrencyJpaEntity CountryCurrency) {

@@ -1,6 +1,6 @@
 package com.pedrolima.wexchange.api;
 
-import com.pedrolima.wexchange.bean.exchange.CountryCurrencyOutput;
+import com.pedrolima.wexchange.integration.fiscal.beans.CountryCurrencyOutput;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

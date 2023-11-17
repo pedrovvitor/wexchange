@@ -1,6 +1,6 @@
 package com.pedrolima.wexchange.entities;
 
-import com.pedrolima.wexchange.integration.fiscal.bean.ConversionRate;
+import com.pedrolima.wexchange.integration.fiscal.beans.ConversionRate;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;

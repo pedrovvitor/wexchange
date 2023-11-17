@@ -1,8 +1,8 @@
-package com.pedrolima.wexchange.usecase;
+package com.pedrolima.wexchange.usecase.create;
 
-import com.pedrolima.wexchange.api.purchase.CreatePurchaseApiInput;
-import com.pedrolima.wexchange.api.purchase.CreatePurchaseApiOutput;
 import com.pedrolima.wexchange.entities.PurchaseJpaEntity;
+import com.pedrolima.wexchange.purchase.models.CreatePurchaseApiInput;
+import com.pedrolima.wexchange.purchase.models.CreatePurchaseApiOutput;
 import com.pedrolima.wexchange.repositories.PurchaseRepository;
 import com.pedrolima.wexchange.services.async.ExchangeRateService;
 import com.pedrolima.wexchange.usecases.purchase.create.DefaultCreatePurchaseUseCase;

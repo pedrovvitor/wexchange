@@ -1,4 +1,4 @@
-package com.pedrolima.wexchange.api.purchase;
+package com.pedrolima.wexchange.purchase.models;
 
 import com.pedrolima.wexchange.api.ApiLink;
 import com.pedrolima.wexchange.entities.PurchaseJpaEntity;

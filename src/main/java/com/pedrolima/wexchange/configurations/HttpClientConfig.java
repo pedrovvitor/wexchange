@@ -1,4 +1,4 @@
-package com.pedrolima.wexchange.configuration;
+package com.pedrolima.wexchange.configurations;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

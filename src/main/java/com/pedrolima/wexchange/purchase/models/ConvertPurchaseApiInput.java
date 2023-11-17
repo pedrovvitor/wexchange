@@ -1,4 +1,4 @@
-package com.pedrolima.wexchange.api.purchase;
+package com.pedrolima.wexchange.purchase.models;
 
 public record ConvertPurchaseApiInput(
         String purchaseId,

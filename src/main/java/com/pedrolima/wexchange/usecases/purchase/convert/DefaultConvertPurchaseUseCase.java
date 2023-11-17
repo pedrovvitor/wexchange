@@ -1,13 +1,13 @@
 package com.pedrolima.wexchange.usecases.purchase.convert;
 
 import com.pedrolima.wexchange.api.ApiLink;
-import com.pedrolima.wexchange.api.purchase.ConvertPurchaseApiInput;
-import com.pedrolima.wexchange.api.purchase.ConvertPurchaseApiOutput;
 import com.pedrolima.wexchange.entities.ExchangeRateJpaEntity;
 import com.pedrolima.wexchange.entities.PurchaseJpaEntity;
 import com.pedrolima.wexchange.exceptions.ExchangeRateNotFoundException;
 import com.pedrolima.wexchange.exceptions.MultipleCountryCurrenciesException;
 import com.pedrolima.wexchange.exceptions.ResourceNotFoundException;
+import com.pedrolima.wexchange.purchase.models.ConvertPurchaseApiInput;
+import com.pedrolima.wexchange.purchase.models.ConvertPurchaseApiOutput;
 import com.pedrolima.wexchange.repositories.ExchangeRateRepository;
 import com.pedrolima.wexchange.repositories.PurchaseRepository;
 import com.pedrolima.wexchange.services.async.ExchangeRateService;
@@ -129,8 +129,6 @@ public class DefaultConvertPurchaseUseCase extends ConvertPurchaseUseCase {
     ) {
         final var convertedAmount = ConversionUtils.calculateConvertedAmount(purchase,
                 conversionRate.getRateValue());
-
-
 
         return ConvertPurchaseApiOutput.with(
                 purchase.getId(),

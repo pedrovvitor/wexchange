@@ -1,137 +1,119 @@
 {
-	"info": {
-		"_postman_id": "2e542180-79f9-46c8-8e17-836c63f9baeb",
-		"name": "wexchange API Endpoints",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "17256075"
-	},
-	"item": [
-		{
-			"name": "Purchases",
-			"item": [
-				{
-					"name": "Create Purchase",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"description\" : \"Test description\",\n    \"date\"  : \"2023-11-16\",\n    \"amount\" : 152.557\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{wexchange.pedrolima.com}}/v1/purchases",
-							"host": [
-								"{{wexchange.pedrolima.com}}"
-							],
-							"path": [
-								"v1",
-								"purchases"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Convert Purchase",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{wexchange.pedrolima.com}}/v1/purchases/{{replacePurchaseId}}/convert?country_currency=Brazil",
-							"host": [
-								"{{wexchange.pedrolima.com}}"
-							],
-							"path": [
-								"v1",
-								"purchases",
-								"{{replacePurchaseId}}",
-								"convert"
-							],
-							"query": [
-								{
-									"key": "country_currency",
-									"value": "Brazil",
-									"description": "Required: country currency case insensitive and like"
-								}
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Country Currencies",
-			"item": [
-				{
-					"name": "Retrieve Country Currency Page",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{wexchange.pedrolima.com}}/v1/country_currencies?country_currency=&page=1&size=20&sort=country,asc&offset=0",
-							"host": [
-								"{{wexchange.pedrolima.com}}"
-							],
-							"path": [
-								"v1",
-								"country_currencies"
-							],
-							"query": [
-								{
-									"key": "country_currency",
-									"value": "",
-									"description": "country currency case insensitive and like"
-								},
-								{
-									"key": "page",
-									"value": "1",
-									"description": "Desired page"
-								},
-								{
-									"key": "size",
-									"value": "20",
-									"description": "Number of registers per page"
-								},
-								{
-									"key": "sort",
-									"value": "country,asc",
-									"description": "sorting: \"fieldName,sortOrder(asc,desc)"
-								},
-								{
-									"key": "offset",
-									"value": "0",
-									"description": "offset size"
-								}
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		}
-	],
-	"variables": [
-		{
-			"id": "1",
-			"key": "wexchange.pedrolima.com",
-			"value": "localhost:8080",
-			"type": "text",
-			"name": "wexchange.pedrolima.com",
-			"description": "Base URL for the wexchange API"
-		},
-		{
-			"id": "2",
-			"key": "replacePurchaseId",
-			"value": "88defd5c-3896-473c-a31a-5bee828db989",
-			"type": "text",
-			"name": "replacePurchaseId",
-			"description": "Default Purchase ID for testing"
-		}
-	]
+  "info": {
+    "_postman_id": "2e542180-79f9-46c8-8e17-836c63f9baeb",
+    "name": "wexchange API Endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "17256075"
+  },
+  "item": [
+    {
+      "name": "Purchases",
+      "item": [
+        {
+          "name": "Create Purchase",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"description\" : \"Test description\",\n    \"date\"  : \"2023-11-16\",\n    \"amount\" : 152.557\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "localhost:8080/v1/purchases",
+              "host": [
+                "localhost:8080"
+              ],
+              "path": [
+                "v1",
+                "purchases"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Convert Purchase",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "localhost:8080/v1/purchases/88defd5c-3896-473c-a31a-5bee828db989/convert?country_currency=Brazil",
+              "host": [
+                "localhost:8080"
+              ],
+              "path": [
+                "v1",
+                "purchases",
+                "88defd5c-3896-473c-a31a-5bee828db989",
+                "convert"
+              ],
+              "query": [
+                {
+                  "key": "country_currency",
+                  "value": "Brazil",
+                  "description": "Required: country currency case insensitive and like"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Country Currencies",
+      "item": [
+        {
+          "name": "Retrieve Country Currency Page",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "localhost:8080/v1/country_currencies?country_currency=&page=0&size=20&sort=country,asc&offset=0",
+              "host": [
+                "localhost:8080"
+              ],
+              "path": [
+                "v1",
+                "country_currencies"
+              ],
+              "query": [
+                {
+                  "key": "country_currency",
+                  "value": "",
+                  "description": "country currency case insensitive and like"
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Desired page"
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "description": "Number of registers per page"
+                },
+                {
+                  "key": "sort",
+                  "value": "country,asc",
+                  "description": "sorting: \"fieldName,sortOrder(asc,desc)"
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "description": "offset size"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
 }

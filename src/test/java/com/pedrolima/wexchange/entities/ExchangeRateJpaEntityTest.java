@@ -1,6 +1,6 @@
 package com.pedrolima.wexchange.entities;
 
-import com.pedrolima.wexchange.integration.fiscal.bean.ConversionRate;
+import com.pedrolima.wexchange.integration.fiscal.beans.ConversionRate;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

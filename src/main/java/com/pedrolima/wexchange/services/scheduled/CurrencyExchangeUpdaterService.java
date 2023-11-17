@@ -3,8 +3,8 @@ package com.pedrolima.wexchange.services.scheduled;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.pedrolima.wexchange.entities.CountryCurrencyJpaEntity;
 import com.pedrolima.wexchange.exceptions.RetryableException;
-import com.pedrolima.wexchange.integration.fiscal.bean.CountryCurrency;
-import com.pedrolima.wexchange.integration.fiscal.builder.ApiUrlBuilder;
+import com.pedrolima.wexchange.integration.fiscal.beans.CountryCurrencyInput;
+import com.pedrolima.wexchange.integration.fiscal.builders.ApiUrlBuilder;
 import com.pedrolima.wexchange.repositories.CountryCurrencyRepository;
 import com.pedrolima.wexchange.utils.JsonUtils;
 import com.pedrolima.wexchange.utils.MetricsHelper;
@@ -27,11 +27,11 @@ import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.pedrolima.wexchange.integration.fiscal.builder.ApiUrlBuilder.FieldType.COUNTRY;
-import static com.pedrolima.wexchange.integration.fiscal.builder.ApiUrlBuilder.FieldType.COUNTRY_CURRENCY;
-import static com.pedrolima.wexchange.integration.fiscal.builder.ApiUrlBuilder.FieldType.CURRENCY;
-import static com.pedrolima.wexchange.integration.fiscal.builder.ApiUrlBuilder.PAGE_SIZE_MAX_VALUE;
-import static com.pedrolima.wexchange.integration.fiscal.builder.ApiUrlBuilder.PageType.SIZE;
+import static com.pedrolima.wexchange.integration.fiscal.builders.ApiUrlBuilder.FieldType.COUNTRY;
+import static com.pedrolima.wexchange.integration.fiscal.builders.ApiUrlBuilder.FieldType.COUNTRY_CURRENCY;
+import static com.pedrolima.wexchange.integration.fiscal.builders.ApiUrlBuilder.FieldType.CURRENCY;
+import static com.pedrolima.wexchange.integration.fiscal.builders.ApiUrlBuilder.PAGE_SIZE_MAX_VALUE;
+import static com.pedrolima.wexchange.integration.fiscal.builders.ApiUrlBuilder.PageType.SIZE;
 
 /**
  * Service for periodically updating country currencies info.
@@ -90,7 +90,7 @@ public class CurrencyExchangeUpdaterService {
             HttpResponse<String> response = sendRequest(request);
             if (response.statusCode() == HttpStatus.OK.value()) {
                 metricsHelper.incrementSuccessfulRequestMetric();
-                List<CountryCurrency> countryCurrencies = JsonUtils.extractDataList(response.body(), CountryCurrency.class);
+                List<CountryCurrencyInput> countryCurrencies = JsonUtils.extractDataList(response.body(), CountryCurrencyInput.class);
 
                 saveCountryCurrencies(countryCurrencies);
                 log.debug("Processing and saving all Country Currencies successfully. Elapsed time {}", watch.formatTime());
@@ -112,7 +112,7 @@ public class CurrencyExchangeUpdaterService {
         }
     }
 
-    private void saveCountryCurrencies(final List<CountryCurrency> countryCurrencies) {
+    private void saveCountryCurrencies(final List<CountryCurrencyInput> countryCurrencies) {
         final var fiscalDataApiCountryCurrencies =
                 countryCurrencies.stream()
                         .filter(countryCurrency -> repository.notExistsByCountryCurrency(countryCurrency.countryCurrency()))
