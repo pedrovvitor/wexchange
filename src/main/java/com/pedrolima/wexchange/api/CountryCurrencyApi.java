@@ -33,7 +33,7 @@ public interface CountryCurrencyApi {
             @ApiResponse(
                     responseCode = "200",
                     description = """
-                                      List of country currencies successfully retrieved. The response includes paginated country currency 
+                                      List of country currencies successfully retrieved. The response includes paginated country currency
                                       data along with related links for further actions.
                                   """
             ),
@@ -49,7 +49,7 @@ public interface CountryCurrencyApi {
                                      """)
             Pageable pageable,
             @Parameter(description = """
-                                         Optional filter parameter. When specified, the service will return only those country currencies that 
+                                         Optional filter parameter. When specified, the service will return only those country currencies that
                                          contain the provided string, case-insensitively. Leave blank to retrieve all available country currencies.
                                      """)
             @RequestParam(name = "country_currency", required = false) String countryCurrency);

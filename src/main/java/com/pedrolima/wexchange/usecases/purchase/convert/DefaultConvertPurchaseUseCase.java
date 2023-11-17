@@ -1,5 +1,6 @@
 package com.pedrolima.wexchange.usecases.purchase.convert;
 
+import com.pedrolima.wexchange.api.ApiLink;
 import com.pedrolima.wexchange.api.purchase.ConvertPurchaseApiInput;
 import com.pedrolima.wexchange.api.purchase.ConvertPurchaseApiOutput;
 import com.pedrolima.wexchange.entities.ExchangeRateJpaEntity;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.pedrolima.wexchange.utils.ConversionUtils.calculateConversionAvailablePeriod;
@@ -128,6 +130,8 @@ public class DefaultConvertPurchaseUseCase extends ConvertPurchaseUseCase {
         final var convertedAmount = ConversionUtils.calculateConvertedAmount(purchase,
                 conversionRate.getRateValue());
 
+
+
         return ConvertPurchaseApiOutput.with(
                 purchase.getId(),
                 purchase.getDescription(),
@@ -136,7 +140,21 @@ public class DefaultConvertPurchaseUseCase extends ConvertPurchaseUseCase {
                 conversionRate.getCountryCurrency(),
                 conversionRate.getRateValue(),
                 conversionRate.getEffectiveDate().toString(),
-                convertedAmount
+                convertedAmount,
+                createApiLinks()
+        );
+    }
+
+    private List<ApiLink> createApiLinks() {
+        final var convertParams = Map.of(
+                "country_currency", "String: Country-Currency to convert"
+        );
+
+        return List.of(
+                ApiLink.with("purchase", "/v1/purchases",
+                        "POST",
+                        convertParams),
+                ApiLink.with("country_currencies", "/v1/country_currencies?country_currency=", "GET", convertParams)
         );
     }
 }

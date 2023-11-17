@@ -182,7 +182,8 @@ public class ConvertPurchaseUseCaseTest {
                 anAmount,
                 aConversionRate,
                 anEffectiveDate.toString(),
-                anAmount.multiply(aConversionRate).setScale(2, RoundingMode.HALF_UP)
+                anAmount.multiply(aConversionRate).setScale(2, RoundingMode.HALF_UP),
+                Collections.emptyList()
         );
 
         when(purchaseRepository.findById(anInput.purchaseId())).thenReturn(Optional.of(purchase));
@@ -197,7 +198,7 @@ public class ConvertPurchaseUseCaseTest {
         assertEquals(expectedOutput.conversionCountryCurrency(), actualOutput.conversionCountryCurrency());
         assertEquals(expectedOutput.originalAmount(), actualOutput.originalAmount());
         assertEquals(expectedOutput.rateValue(), actualOutput.rateValue());
-        assertEquals(expectedOutput.exchangeRateEffectiveDate(), actualOutput.exchangeRateEffectiveDate());
+        assertEquals(expectedOutput.rateEffectiveDate(), actualOutput.rateEffectiveDate());
         assertEquals(expectedOutput.convertedAmount(), actualOutput.convertedAmount());
 
         verify(purchaseRepository, times(1)).findById(anyString());
