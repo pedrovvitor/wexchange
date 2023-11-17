@@ -1,11 +1,11 @@
 package com.pedrolima.wexchange.services.async;
 
-import com.pedrolima.wexchange.entities.ConversionRateJpaEntity;
+import com.pedrolima.wexchange.entities.ExchangeRateJpaEntity;
 import com.pedrolima.wexchange.entities.PurchaseJpaEntity;
 import com.pedrolima.wexchange.exceptions.RetryableException;
 import com.pedrolima.wexchange.integration.fiscal.bean.ConversionRate;
 import com.pedrolima.wexchange.integration.fiscal.builder.ApiUrlBuilder;
-import com.pedrolima.wexchange.repositories.ConversionRateRepository;
+import com.pedrolima.wexchange.repositories.ExchangeRateRepository;
 import com.pedrolima.wexchange.utils.JsonUtils;
 import com.pedrolima.wexchange.utils.MetricsHelper;
 import lombok.RequiredArgsConstructor;
@@ -66,7 +66,7 @@ public class ExchangeRateService {
     @Value("${fiscal.service.api.endpoint}")
     private String exchangeApiUrl;
 
-    private final ConversionRateRepository conversionRateRepository;
+    private final ExchangeRateRepository exchangeRateRepository;
 
     private final MetricsHelper metricsHelper;
 
@@ -80,13 +80,13 @@ public class ExchangeRateService {
         final var request = buildHttpRequest(apiUri);
 
         try {
-            final var response = sendRequestWithMetrics(request);
+            final var response = sendRequest(request);
 
             if (response.statusCode() == HttpStatus.OK.value()) {
                 final var conversionRateJpaEntities = processAndFilterConversionRate(response);
 
                 if (!conversionRateJpaEntities.isEmpty()) {
-                    conversionRateRepository.saveAll(conversionRateJpaEntities);
+                    exchangeRateRepository.saveAll(conversionRateJpaEntities);
                 }
             } else {
                 log.warn("Unexpected response status: {} - Retry attempt: {}", response.statusCode(), getRetryCount());
@@ -95,16 +95,16 @@ public class ExchangeRateService {
         } catch (IOException | InterruptedException e) {
             metricsHelper.incrementRequestErrorMetric();
             log.error("Error occurred: {} - Retry attempt: {}", e, getRetryCount());
-            throw new RetryableException("Error processing request.", e);
+            throw new RetryableException("Error processing request");
         }
     }
 
-    private List<ConversionRateJpaEntity> processAndFilterConversionRate(final HttpResponse<String> response) throws IOException {
+    private List<ExchangeRateJpaEntity> processAndFilterConversionRate(final HttpResponse<String> response) throws IOException {
         final var conversionRates = JsonUtils.extractDataList(response.body(), ConversionRate.class);
         return conversionRates.stream()
-                .map(ConversionRateJpaEntity::with)
+                .map(ExchangeRateJpaEntity::with)
                 .collect(Collectors.toMap(
-                        ConversionRateJpaEntity::getCountryCurrency,
+                        ExchangeRateJpaEntity::getCountryCurrency,
                         Function.identity(),
                         (existing, replacement) -> existing,
                         LinkedHashMap::new
@@ -115,10 +115,10 @@ public class ExchangeRateService {
                 .collect(Collectors.toList());
     }
 
-    private HttpResponse<String> sendRequestWithMetrics(final HttpRequest request) throws IOException, InterruptedException {
+    private HttpResponse<String> sendRequest(final HttpRequest request) throws IOException, InterruptedException {
         final var watch = new StopWatch();
         watch.start();
-        final var response = sendRequest(request);
+        final var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         watch.stop();
         metricsHelper.registryFiscalServiceRetrievalElapsedTime(watch.getTime());
         return response;
@@ -137,15 +137,11 @@ public class ExchangeRateService {
                 .build();
     }
 
-    private boolean isConversionRateNew(final ConversionRateJpaEntity conversionRate) {
-        return conversionRateRepository.notExistsByCountryCurrencyAndEffectiveDate(
+    private boolean isConversionRateNew(final ExchangeRateJpaEntity conversionRate) {
+        return exchangeRateRepository.notExistsByCountryCurrencyAndEffectiveDate(
                 conversionRate.getCountryCurrency(),
                 conversionRate.getEffectiveDate()
         );
-    }
-
-    private HttpResponse<String> sendRequest(final HttpRequest request) throws IOException, InterruptedException {
-        return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
     }
 
     private int getRetryCount() {

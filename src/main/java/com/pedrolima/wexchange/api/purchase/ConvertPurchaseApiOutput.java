@@ -8,7 +8,7 @@ public record ConvertPurchaseApiOutput(
         String transactionDate,
         String conversionCountryCurrency,
         BigDecimal originalAmount,
-        BigDecimal exchangeRate,
+        BigDecimal rateValue,
         String exchangeRateEffectiveDate,
         BigDecimal convertedAmount
 ) {
@@ -19,7 +19,7 @@ public record ConvertPurchaseApiOutput(
             final String aTransactionDate,
             final BigDecimal anOriginalAmount,
             final String aCountryCurrency,
-            final BigDecimal aExchangeRate,
+            final BigDecimal aRateValue,
             final String anExchangeRateEffectiveDate,
             final BigDecimal aConvertedAmount) {
         return new ConvertPurchaseApiOutput(
@@ -28,7 +28,7 @@ public record ConvertPurchaseApiOutput(
                 aTransactionDate,
                 aCountryCurrency,
                 anOriginalAmount,
-                aExchangeRate,
+                aRateValue,
                 anExchangeRateEffectiveDate,
                 aConvertedAmount
         );

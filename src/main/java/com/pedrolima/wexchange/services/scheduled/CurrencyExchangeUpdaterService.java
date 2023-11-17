@@ -34,14 +34,14 @@ import static com.pedrolima.wexchange.integration.fiscal.builder.ApiUrlBuilder.P
 import static com.pedrolima.wexchange.integration.fiscal.builder.ApiUrlBuilder.PageType.SIZE;
 
 /**
- * Service for periodically updating exchange rates for various country currencies.
- * It interacts with an external fiscal service API to fetch updated exchange rate data.
- * The service is scheduled to run daily, ensuring that the database always has the latest exchange rate information.
+ * Service for periodically updating country currencies info.
+ * It interacts with an external fiscal service API to fetch updated country currency data.
+ * The service is scheduled to run daily, ensuring that the database always has the latest available country currencies' information.
  * <p>
  * The update process includes:
- * 1. Building a URL request targeting the fiscal service API to fetch exchange rates.
- * 2. Sending the request and processing the response to obtain exchange rate data.
- * 3. Filtering and saving the relevant exchange rate information into the database.
+ * 1. Building a URL request targeting the fiscal service API to fetch country currencies.
+ * 2. Sending the request and processing the response to obtain country currencies' data.
+ * 3. Filtering and saving the relevant country currencies information into the database.
  * <p>
  * The service leverages Spring's @Scheduled annotation for daily execution and @Retryable for handling failures.
  * In case of communication failures or unexpected response statuses, the operation is retried with a defined backoff strategy.
@@ -57,7 +57,7 @@ import static com.pedrolima.wexchange.integration.fiscal.builder.ApiUrlBuilder.P
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class ScheduledFiscalDataUpdateService {
+public class CurrencyExchangeUpdaterService {
 
     public static final int ONE_DAY_MS = 86400000;
 
@@ -67,6 +67,8 @@ public class ScheduledFiscalDataUpdateService {
     private String exchangeApiUrl;
 
     private final MetricsHelper metricsHelper;
+
+    private final HttpClient httpClient;
 
     /*
         Maintain this task in this service would imply in scalability issues.
@@ -79,20 +81,18 @@ public class ScheduledFiscalDataUpdateService {
             maxAttempts = 10
     )
     @Scheduled(fixedRate = ONE_DAY_MS, initialDelay = 100)
-    public void updateAllExchangeRates() {
+    public void synchronizeCountryCurrencies() {
+        StopWatch watch = new StopWatch();
+        watch.start();
         String fullUrl = buildFullUrl();
         HttpRequest request = buildHttpRequest(fullUrl);
-
         try {
-            StopWatch watch = new StopWatch();
-
             HttpResponse<String> response = sendRequest(request);
             if (response.statusCode() == HttpStatus.OK.value()) {
-                watch.start();
+                metricsHelper.incrementSuccessfulRequestMetric();
                 List<CountryCurrency> countryCurrencies = JsonUtils.extractDataList(response.body(), CountryCurrency.class);
 
                 saveCountryCurrencies(countryCurrencies);
-                watch.stop();
                 log.debug("Processing and saving all Country Currencies successfully. Elapsed time {}", watch.formatTime());
             } else {
                 log.warn("Unexpected response status: {} - Retry attempt: {}", response.statusCode(), getRetryCount());
@@ -101,10 +101,14 @@ public class ScheduledFiscalDataUpdateService {
         } catch (JsonProcessingException e) {
             log.error("Error parsing JSON response: {} - Retry attempt: {}", e, getRetryCount());
             metricsHelper.incrementParsingErrorMetric();
-            throw new RetryableException("Error parsing API response", e);
+            throw new RetryableException("Error parsing API response");
         } catch (IOException | InterruptedException e) {
             log.error("Failed to communicate with fiscaldata api: {} - Retry attempt: {}", e, getRetryCount());
-            throw new RetryableException("Failed to communicate with fiscaldata api", e);
+            metricsHelper.incrementRequestErrorMetric();
+            throw new RetryableException("Failed to communicate with fiscaldata api");
+        } finally {
+            watch.stop();
+
         }
     }
 
@@ -121,7 +125,7 @@ public class ScheduledFiscalDataUpdateService {
     private HttpResponse<String> sendRequest(final HttpRequest request) throws IOException, InterruptedException {
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
-        HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         stopWatch.stop();
         metricsHelper.registryFiscalServiceRetrievalElapsedTime(stopWatch.getNanoTime());
         return response;

@@ -2,12 +2,12 @@ package com.pedrolima.wexchange.usecase;
 
 import com.pedrolima.wexchange.api.purchase.ConvertPurchaseApiInput;
 import com.pedrolima.wexchange.api.purchase.ConvertPurchaseApiOutput;
-import com.pedrolima.wexchange.entities.ConversionRateJpaEntity;
+import com.pedrolima.wexchange.entities.ExchangeRateJpaEntity;
 import com.pedrolima.wexchange.entities.PurchaseJpaEntity;
 import com.pedrolima.wexchange.exceptions.ExchangeRateNotFoundException;
 import com.pedrolima.wexchange.exceptions.MultipleCountryCurrenciesException;
 import com.pedrolima.wexchange.exceptions.ResourceNotFoundException;
-import com.pedrolima.wexchange.repositories.ConversionRateRepository;
+import com.pedrolima.wexchange.repositories.ExchangeRateRepository;
 import com.pedrolima.wexchange.repositories.PurchaseRepository;
 import com.pedrolima.wexchange.services.async.ExchangeRateService;
 import com.pedrolima.wexchange.usecases.purchase.convert.DefaultConvertPurchaseUseCase;
@@ -42,7 +42,7 @@ public class ConvertPurchaseUseCaseTest {
     private PurchaseRepository purchaseRepository;
 
     @Mock
-    private ConversionRateRepository conversionRateRepository;
+    private ExchangeRateRepository exchangeRateRepository;
 
     @Mock
     private ExchangeRateService exchangeRateService;
@@ -59,7 +59,7 @@ public class ConvertPurchaseUseCaseTest {
 
         assertEquals(expectedExceptionMessage, actualException.getMessage());
         verify(purchaseRepository, never()).findById(anyString());
-        verify(conversionRateRepository, never())
+        verify(exchangeRateRepository, never())
                 .findLatestRatesByCountryCurrencyAndDateRange(anyString(), any(), any());
     }
 
@@ -79,7 +79,7 @@ public class ConvertPurchaseUseCaseTest {
 
         assertEquals(expectedExceptionMessage, actualException.getMessage());
         verify(purchaseRepository, never()).findById(anyString());
-        verify(conversionRateRepository, never())
+        verify(exchangeRateRepository, never())
                 .findLatestRatesByCountryCurrencyAndDateRange(anyString(), any(), any());
     }
 
@@ -93,7 +93,7 @@ public class ConvertPurchaseUseCaseTest {
 
         assertEquals(expectedExceptionMessage, actualException.getMessage());
         verify(purchaseRepository, never()).findById(anyString());
-        verify(conversionRateRepository, never())
+        verify(exchangeRateRepository, never())
                 .findLatestRatesByCountryCurrencyAndDateRange(anyString(), any(), any());
     }
 
@@ -108,7 +108,7 @@ public class ConvertPurchaseUseCaseTest {
 
         assertEquals(expectedExceptionMessage, actualException.getMessage());
         verify(purchaseRepository, times(1)).findById(anyString());
-        verify(conversionRateRepository, never())
+        verify(exchangeRateRepository, never())
                 .findLatestRatesByCountryCurrencyAndDateRange(anyString(), any(), any());
         verify(exchangeRateService, never()).updateExchangeRates(any(PurchaseJpaEntity.class));
     }
@@ -120,7 +120,7 @@ public class ConvertPurchaseUseCaseTest {
         final var aPurchase = PurchaseJpaEntity.newPurchase("random Description", LocalDate.now(), BigDecimal.valueOf(100));
 
         when(purchaseRepository.findById(input.purchaseId())).thenReturn(Optional.of(aPurchase));
-        when(conversionRateRepository.findLatestRatesByCountryCurrencyAndDateRange(
+        when(exchangeRateRepository.findLatestRatesByCountryCurrencyAndDateRange(
                 anyString(),
                 any(LocalDate.class),
                 any(LocalDate.class))
@@ -132,7 +132,7 @@ public class ConvertPurchaseUseCaseTest {
 
         assertEquals(expectedExceptionMessage, actualException.getMessage());
         verify(purchaseRepository, times(1)).findById(anyString());
-        verify(conversionRateRepository, times(1))
+        verify(exchangeRateRepository, times(1))
                 .findLatestRatesByCountryCurrencyAndDateRange(anyString(), any(LocalDate.class), any(LocalDate.class));
         verify(exchangeRateService, times(1)).updateExchangeRates(any(PurchaseJpaEntity.class));
     }
@@ -141,16 +141,16 @@ public class ConvertPurchaseUseCaseTest {
     void givenMultipleExchangeRatesFound_whenExecute_thenThrowMultipleCountryCurrenciesException() {
         final var input = new ConvertPurchaseApiInput(UUID.randomUUID().toString(), "Brazil-Real");
         final var purchase = new PurchaseJpaEntity("Test Purchase", LocalDate.now(), BigDecimal.valueOf(100));
-        final var rate1 = new ConversionRateJpaEntity();
-        final var rate2 = new ConversionRateJpaEntity();
+        final var rate1 = new ExchangeRateJpaEntity();
+        final var rate2 = new ExchangeRateJpaEntity();
 
         when(purchaseRepository.findById(input.purchaseId())).thenReturn(Optional.of(purchase));
-        when(conversionRateRepository.findLatestRatesByCountryCurrencyAndDateRange(anyString(), any(), any()))
+        when(exchangeRateRepository.findLatestRatesByCountryCurrencyAndDateRange(anyString(), any(), any()))
                 .thenReturn(List.of(rate1, rate2));
 
         assertThrows(MultipleCountryCurrenciesException.class, () -> convertPurchaseUseCase.execute(input));
         verify(purchaseRepository, times(1)).findById(anyString());
-        verify(conversionRateRepository, times(1))
+        verify(exchangeRateRepository, times(1))
                 .findLatestRatesByCountryCurrencyAndDateRange(anyString(), any(LocalDate.class), any(LocalDate.class));
         verify(exchangeRateService, never()).updateExchangeRates(any(PurchaseJpaEntity.class));
     }
@@ -168,7 +168,7 @@ public class ConvertPurchaseUseCaseTest {
         final var anEffectiveDate = LocalDate.of(2023, 9, 30);
         final var aConversionRate = BigDecimal.valueOf(5.255);
 
-        final var conversionRate = ConversionRateJpaEntity.newConversionRate(
+        final var conversionRate = ExchangeRateJpaEntity.newConversionRate(
                 aCountryCurrency,
                 anEffectiveDate,
                 aConversionRate
@@ -186,7 +186,7 @@ public class ConvertPurchaseUseCaseTest {
         );
 
         when(purchaseRepository.findById(anInput.purchaseId())).thenReturn(Optional.of(purchase));
-        when(conversionRateRepository.findLatestRatesByCountryCurrencyAndDateRange(any(), any(), any()))
+        when(exchangeRateRepository.findLatestRatesByCountryCurrencyAndDateRange(any(), any(), any()))
                 .thenReturn(Collections.singletonList(conversionRate));
 
         ConvertPurchaseApiOutput actualOutput = convertPurchaseUseCase.execute(anInput);
@@ -196,12 +196,12 @@ public class ConvertPurchaseUseCaseTest {
         assertEquals(expectedOutput.transactionDate(), actualOutput.transactionDate());
         assertEquals(expectedOutput.conversionCountryCurrency(), actualOutput.conversionCountryCurrency());
         assertEquals(expectedOutput.originalAmount(), actualOutput.originalAmount());
-        assertEquals(expectedOutput.exchangeRate(), actualOutput.exchangeRate());
+        assertEquals(expectedOutput.rateValue(), actualOutput.rateValue());
         assertEquals(expectedOutput.exchangeRateEffectiveDate(), actualOutput.exchangeRateEffectiveDate());
         assertEquals(expectedOutput.convertedAmount(), actualOutput.convertedAmount());
 
         verify(purchaseRepository, times(1)).findById(anyString());
-        verify(conversionRateRepository, times(1))
+        verify(exchangeRateRepository, times(1))
                 .findLatestRatesByCountryCurrencyAndDateRange(anyString(), any(LocalDate.class), any(LocalDate.class));
         verify(exchangeRateService, never()).updateExchangeRates(any(PurchaseJpaEntity.class));
     }

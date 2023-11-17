@@ -12,10 +12,10 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "conversion_rate")
-@IdClass(ConversionRateCompositeKey.class)
+@Table(name = "exchange_rate")
+@IdClass(ExchangeRateCompositeKey.class)
 @Getter
-public class ConversionRateJpaEntity {
+public class ExchangeRateJpaEntity {
 
     @Id
     @Column(name = "country_currency")
@@ -25,37 +25,37 @@ public class ConversionRateJpaEntity {
     @Column(name = "effective_date")
     private LocalDate effectiveDate;
 
-    @Column(name = "exchange_rate")
-    private BigDecimal exchangeRate;
+    @Column(name = "rate_value", precision = 12, scale = 3)
+    private BigDecimal rateValue;
 
-    public ConversionRateJpaEntity() {
+    public ExchangeRateJpaEntity() {
     }
 
-    private ConversionRateJpaEntity(
+    private ExchangeRateJpaEntity(
             final String countryCurrency,
             final LocalDate effectiveDate,
-            final BigDecimal exchangeRate
+            final BigDecimal rateValue
     ) {
         this.countryCurrency = countryCurrency;
         this.effectiveDate = effectiveDate;
-        this.exchangeRate = exchangeRate;
+        this.rateValue = rateValue;
     }
 
-    public static ConversionRateJpaEntity with(
+    public static ExchangeRateJpaEntity with(
             final ConversionRate aConversionRate) {
-        return new ConversionRateJpaEntity(
+        return new ExchangeRateJpaEntity(
                 aConversionRate.countryCurrency(),
                 aConversionRate.effectiveDate(),
                 aConversionRate.exchangeRate()
         );
     }
 
-    public static ConversionRateJpaEntity newConversionRate(
+    public static ExchangeRateJpaEntity newConversionRate(
             final String aCountryCurrency,
             final LocalDate anEffectiveDate,
             final BigDecimal anExchangeRate
     ) {
-        return new ConversionRateJpaEntity(
+        return new ExchangeRateJpaEntity(
                 aCountryCurrency,
                 anEffectiveDate,
                 anExchangeRate

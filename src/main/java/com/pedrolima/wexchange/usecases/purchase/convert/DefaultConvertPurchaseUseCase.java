@@ -2,12 +2,12 @@ package com.pedrolima.wexchange.usecases.purchase.convert;
 
 import com.pedrolima.wexchange.api.purchase.ConvertPurchaseApiInput;
 import com.pedrolima.wexchange.api.purchase.ConvertPurchaseApiOutput;
-import com.pedrolima.wexchange.entities.ConversionRateJpaEntity;
+import com.pedrolima.wexchange.entities.ExchangeRateJpaEntity;
 import com.pedrolima.wexchange.entities.PurchaseJpaEntity;
 import com.pedrolima.wexchange.exceptions.ExchangeRateNotFoundException;
 import com.pedrolima.wexchange.exceptions.MultipleCountryCurrenciesException;
 import com.pedrolima.wexchange.exceptions.ResourceNotFoundException;
-import com.pedrolima.wexchange.repositories.ConversionRateRepository;
+import com.pedrolima.wexchange.repositories.ExchangeRateRepository;
 import com.pedrolima.wexchange.repositories.PurchaseRepository;
 import com.pedrolima.wexchange.services.async.ExchangeRateService;
 import com.pedrolima.wexchange.utils.ConversionUtils;
@@ -44,7 +44,7 @@ import static org.apache.commons.lang3.StringUtils.length;
  * - Throws {@link ResourceNotFoundException} if the purchase with the given ID is not found.
  *
  * @see PurchaseJpaEntity for details on the purchase entity.
- * @see ConversionRateJpaEntity for details on the currency conversion rates.
+ * @see ExchangeRateJpaEntity for details on the currency conversion rates.
  * @see ConvertPurchaseApiOutput for the output format of the currency conversion operation.
  */
 @Service
@@ -52,13 +52,13 @@ import static org.apache.commons.lang3.StringUtils.length;
 @RequiredArgsConstructor
 public class DefaultConvertPurchaseUseCase extends ConvertPurchaseUseCase {
 
-    public static final int MIN_COUNTRY_CURRENCY_LENGHT = 3;
+    public static final int MIN_COUNTRY_CURRENCY_LENGTH = 3;
 
-    public static final int MAX_COUNTRY_CURRENCY_LENGHT = 100;
+    public static final int MAX_COUNTRY_CURRENCY_LENGTH = 100;
 
     private final PurchaseRepository purchaseRepository;
 
-    private final ConversionRateRepository conversionRateRepository;
+    private final ExchangeRateRepository exchangeRateRepository;
 
     private final ExchangeRateService exchangeRateService;
 
@@ -77,20 +77,20 @@ public class DefaultConvertPurchaseUseCase extends ConvertPurchaseUseCase {
                     .formatted(
                             countryCurrencies.size(),
                             input.countryCurrency(),
-                            countryCurrencies.stream().map(ConversionRateJpaEntity::getCountryCurrency)
-                                    .collect(Collectors.joining("\\n, "))
+                            countryCurrencies.stream().map(ExchangeRateJpaEntity::getCountryCurrency)
+                                    .collect(Collectors.joining(", "))
                     ));
         }
 
         return calculateAndProduceOutput(purchase, countryCurrencies.stream().findFirst().get());
     }
 
-    private List<ConversionRateJpaEntity> findExchangeRates(
+    private List<ExchangeRateJpaEntity> findExchangeRates(
             final ConvertPurchaseApiInput input,
             final PurchaseJpaEntity purchase,
             final Pair<LocalDate, LocalDate> availablePeriod
     ) {
-        final var countryCurrencies = conversionRateRepository.findLatestRatesByCountryCurrencyAndDateRange(
+        final var countryCurrencies = exchangeRateRepository.findLatestRatesByCountryCurrencyAndDateRange(
                 input.countryCurrency(),
                 availablePeriod.getLeft(),
                 availablePeriod.getRight()
@@ -106,8 +106,8 @@ public class DefaultConvertPurchaseUseCase extends ConvertPurchaseUseCase {
     }
 
     private static void validateInput(final ConvertPurchaseApiInput input) {
-        if (isBlank(input.countryCurrency()) || length(input.countryCurrency()) < MIN_COUNTRY_CURRENCY_LENGHT
-                || length(input.countryCurrency()) > MAX_COUNTRY_CURRENCY_LENGHT
+        if (isBlank(input.countryCurrency()) || length(input.countryCurrency()) < MIN_COUNTRY_CURRENCY_LENGTH
+                || length(input.countryCurrency()) > MAX_COUNTRY_CURRENCY_LENGTH
         ) {
             throw new IllegalArgumentException("Country Currency must have between 3 and 100 characters");
         }
@@ -123,10 +123,10 @@ public class DefaultConvertPurchaseUseCase extends ConvertPurchaseUseCase {
 
     private ConvertPurchaseApiOutput calculateAndProduceOutput(
             final PurchaseJpaEntity purchase,
-            final ConversionRateJpaEntity conversionRate
+            final ExchangeRateJpaEntity conversionRate
     ) {
         final var convertedAmount = ConversionUtils.calculateConvertedAmount(purchase,
-                conversionRate.getExchangeRate());
+                conversionRate.getRateValue());
 
         return ConvertPurchaseApiOutput.with(
                 purchase.getId(),
@@ -134,7 +134,7 @@ public class DefaultConvertPurchaseUseCase extends ConvertPurchaseUseCase {
                 purchase.getDate().toString(),
                 purchase.getAmount(),
                 conversionRate.getCountryCurrency(),
-                conversionRate.getExchangeRate(),
+                conversionRate.getRateValue(),
                 conversionRate.getEffectiveDate().toString(),
                 convertedAmount
         );

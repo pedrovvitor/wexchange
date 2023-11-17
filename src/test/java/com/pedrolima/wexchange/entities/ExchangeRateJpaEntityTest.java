@@ -8,7 +8,7 @@ import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class ConversionRateJpaEntityTest {
+public class ExchangeRateJpaEntityTest {
 
     @Test
     void givenValidConversionRate_whenCallWith_thenInstantiateConversionRateJpaEntity() {
@@ -16,11 +16,11 @@ public class ConversionRateJpaEntityTest {
         final var effectiveDate = LocalDate.now();
         final var exchangeRate = BigDecimal.valueOf(1.2);
 
-        ConversionRateJpaEntity conversionRateJpaEntity = ConversionRateJpaEntity.with(
+        ExchangeRateJpaEntity exchangeRateJpaEntity = ExchangeRateJpaEntity.with(
                 new ConversionRate(exchangeRate, effectiveDate, countryCurrency));
 
-        assertEquals(countryCurrency, conversionRateJpaEntity.getCountryCurrency());
-        assertEquals(effectiveDate, conversionRateJpaEntity.getEffectiveDate());
-        assertEquals(exchangeRate, conversionRateJpaEntity.getExchangeRate());
+        assertEquals(countryCurrency, exchangeRateJpaEntity.getCountryCurrency());
+        assertEquals(effectiveDate, exchangeRateJpaEntity.getEffectiveDate());
+        assertEquals(exchangeRate, exchangeRateJpaEntity.getRateValue());
     }
 }

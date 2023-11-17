@@ -9,11 +9,11 @@ public record CountryCurrency(
         @JsonProperty("currency") String currency
 ) {
 
-    public static CountryCurrency with(final CountryCurrencyJpaEntity apiCountryCurrency) {
+    public static CountryCurrency with(final CountryCurrencyJpaEntity CountryCurrency) {
         return new CountryCurrency(
-                apiCountryCurrency.getCountryCurrency(),
-                apiCountryCurrency.getCountry(),
-                apiCountryCurrency.getCurrency()
+                CountryCurrency.getCountryCurrency(),
+                CountryCurrency.getCountry(),
+                CountryCurrency.getCurrency()
         );
     }
 }

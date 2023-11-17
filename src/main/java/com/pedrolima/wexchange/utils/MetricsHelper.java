@@ -21,8 +21,21 @@ public class MetricsHelper {
                 .record(Duration.ofNanos(time));
     }
 
+    public void registryUpsertCountryCurrenciesElapsedTime(final long time) {
+        Timer.builder("wexchange.application.update..retrieval.time")
+                .publishPercentileHistogram()
+                .register(meterRegistry)
+                .record(Duration.ofNanos(time));
+    }
+
     public void incrementRequestErrorMetric() {
         Counter.builder("wexchange.application.integration.fiscal.request.error.count")
+                .register(meterRegistry)
+                .increment();
+    }
+
+    public void incrementSuccessfulRequestMetric() {
+        Counter.builder("wexchange.application.integration.fiscal.request.success.count")
                 .register(meterRegistry)
                 .increment();
     }

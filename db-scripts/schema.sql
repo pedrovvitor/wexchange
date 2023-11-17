@@ -26,14 +26,14 @@ create table if not exists country_currency
     (255) not null
     );
 
-create table if not exists conversion_rate
+create table if not exists exchange_rate
 (
     country_currency VARCHAR
 (
     255
 ) not null,
     effective_date DATE not null,
-    exchange_rate NUMERIC not null,
+    rate_value NUMERIC not null,
     primary key
     (country_currency, effective_date)
     );
