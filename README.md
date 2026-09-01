@@ -31,6 +31,43 @@
     docker-compose down
    ```
 
+## Runtime profiles
+
+The application activates **no profile by default**. Starting it without one
+gives you `application.yml` alone, which expects `DATABASE_POSTGRES_URL`,
+`DATABASE_POSTGRES_USERNAME`, and `DATABASE_POSTGRES_PASSWORD` in the
+environment. Selecting a profile is always a deliberate act.
+
+| Profile | Where it lives | Used by |
+| --- | --- | --- |
+| `development` | `src/main/resources/application-development.yml` | local runs against a real PostgreSQL |
+| `production` | `src/main/resources/application-production.yml` | the Docker image and any deployment |
+| `test` | `src/test/resources/application-test.yml` | automated tests only; never packaged |
+
+Choose one explicitly:
+
+```sh
+SPRING_PROFILES_ACTIVE=development ./gradlew bootRun
+java -jar build/libs/wexchange-1.0-SNAPSHOT.jar --spring.profiles.active=production
+```
+
+`docker-compose.yml` sets `SPRING_PROFILES_ACTIVE=production`, and the Dockerfile
+carries the same value as its default.
+
+## Building and checking
+
+The build declares its own Java 17 toolchain, so no particular `JAVA_HOME` is
+required and no locale flags are needed.
+
+```sh
+./gradlew clean check
+```
+
+That is the complete gate: formatting, static analysis, the unit, integration,
+and architecture suites, coverage verification, and mutation testing. See
+[docs/engineering/test-taxonomy.md](docs/engineering/test-taxonomy.md) for what
+each threshold is and which task owns it.
+
 ### Notes:
 
 - Ensure that your PostgreSQL container is running and accessible.

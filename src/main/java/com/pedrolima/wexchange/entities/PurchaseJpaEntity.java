@@ -11,7 +11,6 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Objects;
-import java.util.UUID;
 
 @Entity
 @Table(name = "purchase")
@@ -36,9 +35,14 @@ public class PurchaseJpaEntity {
     @Column(name = "updated_at", nullable = false, columnDefinition = "DATETIME(6)")
     private Instant updatedAt;
 
-    private PurchaseJpaEntity(final String description, final LocalDate purchaseDate, final BigDecimal amount) {
-        final var now = Instant.now();
-        this.id = UUID.randomUUID().toString();
+    private PurchaseJpaEntity(
+            final String id,
+            final String description,
+            final LocalDate purchaseDate,
+            final BigDecimal amount,
+            final Instant now
+    ) {
+        this.id = id;
         this.description = description;
         this.purchaseDate = purchaseDate;
         this.amount = amount.setScale(2, RoundingMode.HALF_EVEN);
@@ -50,8 +54,23 @@ public class PurchaseJpaEntity {
 
     }
 
-    public static PurchaseJpaEntity newPurchase(final String description, final LocalDate date, final BigDecimal amount) {
-        return new PurchaseJpaEntity(description, date, amount);
+    /**
+     * Creates a purchase from values the caller has already decided.
+     *
+     * <p>The identifier and the timestamp are parameters rather than being read
+     * from {@code UUID.randomUUID()} and {@code Instant.now()} here. The entity
+     * is then a pure function of its arguments, and the use case that owns the
+     * decision supplies them from an injected {@code IdentifierGenerator} and
+     * {@code Clock}.
+     */
+    public static PurchaseJpaEntity newPurchase(
+            final String anId,
+            final String aDescription,
+            final LocalDate aPurchaseDate,
+            final BigDecimal anAmount,
+            final Instant now
+    ) {
+        return new PurchaseJpaEntity(anId, aDescription, aPurchaseDate, anAmount, now);
     }
 
     @Override

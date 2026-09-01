@@ -8,6 +8,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -139,11 +140,17 @@ class ConversionUtilsTest {
         }
     }
 
+    private static final String A_PURCHASE_ID = "0f6f2a1c-1d6e-4b3a-9c2e-5d8f7a6b4c3d";
+
+    private static final Instant A_FIXED_INSTANT = Instant.parse("2024-01-31T12:00:00Z");
+
     private static PurchaseJpaEntity purchaseOf(final String amount) {
-        return PurchaseJpaEntity.newPurchase("A purchase", LocalDate.of(2024, 1, 31), new BigDecimal(amount));
+        return PurchaseJpaEntity.newPurchase(
+                A_PURCHASE_ID, "A purchase", LocalDate.of(2024, 1, 31), new BigDecimal(amount), A_FIXED_INSTANT);
     }
 
     private static PurchaseJpaEntity purchaseOn(final LocalDate purchaseDate) {
-        return PurchaseJpaEntity.newPurchase("A purchase", purchaseDate, new BigDecimal("1.00"));
+        return PurchaseJpaEntity.newPurchase(
+                A_PURCHASE_ID, "A purchase", purchaseDate, new BigDecimal("1.00"), A_FIXED_INSTANT);
     }
 }

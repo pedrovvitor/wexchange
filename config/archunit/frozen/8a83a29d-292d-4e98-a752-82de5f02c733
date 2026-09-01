@@ -1,2 +1,0 @@
-Field <com.pedrolima.wexchange.services.async.ExchangeRateService.exchangeApiUrl> is annotated with @Value in (ExchangeRateService.java:0)
-Field <com.pedrolima.wexchange.services.scheduled.CountryCurrencyUpdaterService.exchangeApiUrl> is annotated with @Value in (CountryCurrencyUpdaterService.java:0)

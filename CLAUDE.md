@@ -113,16 +113,14 @@ gate: formatting, static analysis, the unit, integration, and architecture
 suites, coverage verification, and mutation testing. Every threshold is owned by
 `build.gradle`; CI consumes these tasks and must never restate a number.
 
-Two environment constraints apply until issue #1 lands. The build declares no
-Java toolchain, so run it on a JDK 17 (`-Dorg.gradle.java.home=...`); Lombok's
-annotation processor fails on much newer JDKs. Six pre-existing tests assert
-English Bean Validation messages, so run with `-Duser.language=en -Duser.country=US`
-on a non-English machine, and never assert validation message text in new tests.
+The build declares its own Java 17 toolchain, so it does not matter which JDK is
+on `JAVA_HOME`. Tests are locale-independent: assert which Bean Validation
+constraint fired, never the sentence it renders.
 
-`config/archunit/frozen/` and `config/pmd/baseline.txt` record pre-existing debt.
-They are ratchets: adding an entry to make a change pass is prohibited, and
-fixing a violation means deleting its entry in the same pull request. Never
-invent a task or imply that a planned gate already exists.
+`config/pmd/baseline.txt` records pre-existing debt. It is a ratchet: adding an
+entry to make a change pass is prohibited, and fixing a violation means deleting
+its entry in the same pull request. Never invent a task or imply that a planned
+gate already exists.
 
 ## Completion report
 

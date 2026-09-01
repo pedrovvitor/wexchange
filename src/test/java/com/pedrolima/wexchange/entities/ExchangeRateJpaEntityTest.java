@@ -13,7 +13,7 @@ public class ExchangeRateJpaEntityTest {
     @Test
     void givenValidConversionRate_whenCallWith_thenInstantiateConversionRateJpaEntity() {
         final var countryCurrency = "Brazil-Real";
-        final var effectiveDate = LocalDate.now();
+        final var effectiveDate = LocalDate.of(2024, 1, 31);
         final var exchangeRate = BigDecimal.valueOf(1.2);
 
         ExchangeRateJpaEntity exchangeRateJpaEntity = ExchangeRateJpaEntity.with(

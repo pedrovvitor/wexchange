@@ -8,7 +8,6 @@ import com.pedrolima.wexchange.integration.fiscal.builders.ApiUrlBuilder;
 import com.pedrolima.wexchange.repositories.ExchangeRateRepository;
 import com.pedrolima.wexchange.utils.JsonUtils;
 import com.pedrolima.wexchange.utils.MetricsHelper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.time.StopWatch;
 import org.springframework.beans.factory.annotation.Value;
@@ -59,18 +58,28 @@ import static com.pedrolima.wexchange.utils.HttpRequestUtils.buildHttpRequest;
  */
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class ExchangeRateService {
 
-    @Value("${fiscal.service.api.endpoint}")
-    private String exchangeApiUrl;
+    private final String exchangeApiUrl;
 
     private final ExchangeRateRepository exchangeRateRepository;
 
     private final MetricsHelper metricsHelper;
 
     private final HttpClient httpClient;
+
+    public ExchangeRateService(
+            @Value("${fiscal.service.api.endpoint}") final String exchangeApiUrl,
+            final ExchangeRateRepository exchangeRateRepository,
+            final MetricsHelper metricsHelper,
+            final HttpClient httpClient
+    ) {
+        this.exchangeApiUrl = exchangeApiUrl;
+        this.exchangeRateRepository = exchangeRateRepository;
+        this.metricsHelper = metricsHelper;
+        this.httpClient = httpClient;
+    }
 
     @Async
     @Retryable(retryFor = {RetryableException.class}, backoff = @Backoff(delay = 2000), maxAttempts = 5)

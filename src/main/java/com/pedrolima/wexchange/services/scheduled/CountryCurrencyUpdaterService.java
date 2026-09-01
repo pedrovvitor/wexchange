@@ -8,7 +8,6 @@ import com.pedrolima.wexchange.integration.fiscal.builders.ApiUrlBuilder;
 import com.pedrolima.wexchange.repositories.CountryCurrencyRepository;
 import com.pedrolima.wexchange.utils.JsonUtils;
 import com.pedrolima.wexchange.utils.MetricsHelper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.time.StopWatch;
 import org.springframework.beans.factory.annotation.Value;
@@ -55,7 +54,6 @@ import static com.pedrolima.wexchange.integration.fiscal.builders.ApiUrlBuilder.
  * The service's scalability and maintainability aspects are considered, with the potential to evolve into a separate microservice or an AWS Lambda function for better resource management.
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class CountryCurrencyUpdaterService {
 
@@ -63,12 +61,23 @@ public class CountryCurrencyUpdaterService {
 
     private final CountryCurrencyRepository repository;
 
-    @Value("${fiscal.service.api.endpoint}")
-    private String exchangeApiUrl;
+    private final String exchangeApiUrl;
 
     private final MetricsHelper metricsHelper;
 
     private final HttpClient httpClient;
+
+    public CountryCurrencyUpdaterService(
+            final CountryCurrencyRepository repository,
+            @Value("${fiscal.service.api.endpoint}") final String exchangeApiUrl,
+            final MetricsHelper metricsHelper,
+            final HttpClient httpClient
+    ) {
+        this.repository = repository;
+        this.exchangeApiUrl = exchangeApiUrl;
+        this.metricsHelper = metricsHelper;
+        this.httpClient = httpClient;
+    }
 
     /*
         Maintain this task in this service would imply in scalability issues.

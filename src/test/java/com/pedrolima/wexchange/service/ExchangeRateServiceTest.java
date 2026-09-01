@@ -6,28 +6,25 @@ import com.pedrolima.wexchange.exceptions.RetryableException;
 import com.pedrolima.wexchange.integration.fiscal.beans.ConversionRate;
 import com.pedrolima.wexchange.repositories.ExchangeRateRepository;
 import com.pedrolima.wexchange.services.async.ExchangeRateService;
-import com.pedrolima.wexchange.utils.JsonUtils;
 import com.pedrolima.wexchange.utils.MetricsHelper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.retry.context.RetryContextSupport;
 import org.springframework.retry.support.RetrySynchronizationManager;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -42,6 +39,16 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class ExchangeRateServiceTest {
 
+    private static final String QUOTE = "\"";
+
+    private static final String API_URL = "http://mocked.api.url";
+
+    private static final String A_PURCHASE_ID = "5b1d9c04-7e32-4a86-b0f9-2c6a8d3e1b47";
+
+    private static final Instant A_FIXED_INSTANT = Instant.parse("2024-07-15T12:00:00Z");
+
+    private static final LocalDate A_PURCHASE_DATE = LocalDate.of(2024, 7, 15);
+
     @Mock
     private ExchangeRateRepository exchangeRateRepository;
 
@@ -51,27 +58,34 @@ public class ExchangeRateServiceTest {
     @Mock
     private HttpClient httpClient;
 
-    @InjectMocks
     private ExchangeRateService exchangeRateService;
 
     private HttpResponse<String> response;
 
+    /** Wraps rate objects in the envelope the Fiscal Data API returns. */
+    private static String ratesPayload(final String... rates) {
+        return "{" + QUOTE + "data" + QUOTE + ":[" + String.join(",", rates) + "]}";
+    }
+
     @BeforeEach
     void setUp() {
         response = Mockito.mock(HttpResponse.class);
-        ReflectionTestUtils.setField(exchangeRateService, "exchangeApiUrl", "http://mocked.api.url");
+        exchangeRateService = new ExchangeRateService(
+                API_URL, exchangeRateRepository, metricsHelper, httpClient);
     }
 
     @Test
     void givenValidPurchase_whenCallUpdateExchangeRates_thenUpdateExchangeRates() throws Exception {
-        final var purchase = PurchaseJpaEntity.newPurchase("Description", LocalDate.now(), BigDecimal.valueOf(100));
+        final var purchase = PurchaseJpaEntity.newPurchase(
+                A_PURCHASE_ID, "Description", A_PURCHASE_DATE, BigDecimal.valueOf(100), A_FIXED_INSTANT);
         final var conversionRate = ConversionRate.with(
                 BigDecimal.valueOf(5.22),
                 LocalDate.of(2023, 10, 30),
                 "Brazil-Real");
 
         when(response.statusCode()).thenReturn(HttpStatus.OK.value());
-        when(response.body()).thenReturn("json response");
+        when(response.body()).thenReturn(ratesPayload("""
+                {"exchange_rate":"5.22","effective_date":"2023-10-30","country_currency_desc":"Brazil-Real"}"""));
 
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandlers.ofString().getClass())))
                 .thenReturn(response);
@@ -80,28 +94,32 @@ public class ExchangeRateServiceTest {
                 conversionRate.effectiveDate()))
                 .thenReturn(true);
 
-        try (MockedStatic<JsonUtils> mockedJsonUtils = Mockito.mockStatic(JsonUtils.class)) {
-            mockedJsonUtils.when(() -> JsonUtils.extractDataList(anyString(), any())).thenReturn(List.of(conversionRate));
+        exchangeRateService.updateExchangeRates(purchase);
 
-            exchangeRateService.updateExchangeRates(purchase);
-
-            verify(exchangeRateRepository, times(1)).saveAll(any());
-            verify(exchangeRateRepository, times(1))
-                    .notExistsByCountryCurrencyAndEffectiveDate(anyString(), any(LocalDate.class));
-            verify(metricsHelper, times(1)).registryFiscalServiceRetrievalElapsedTime(anyLong());
-        }
+        final var saved = ArgumentCaptor.forClass(List.class);
+        verify(exchangeRateRepository).saveAll(saved.capture());
+        Assertions.assertEquals(1, saved.getValue().size());
+        final var stored = (ExchangeRateJpaEntity) saved.getValue().get(0);
+        Assertions.assertEquals("Brazil-Real", stored.getCountryCurrency());
+        Assertions.assertEquals(LocalDate.of(2023, 10, 30), stored.getEffectiveDate());
+        Assertions.assertEquals(new BigDecimal("5.22"), stored.getRateValue());
+        verify(exchangeRateRepository, times(1))
+                .notExistsByCountryCurrencyAndEffectiveDate(anyString(), any(LocalDate.class));
+        verify(metricsHelper, times(1)).registryFiscalServiceRetrievalElapsedTime(anyLong());
     }
 
     @Test
     void givenValidPurchase_whenCallUpdateExchangeRatesAndNoNewConversionRate_thenDontSaveAll() throws Exception {
-        final var purchase = PurchaseJpaEntity.newPurchase("Description", LocalDate.now(), BigDecimal.valueOf(100));
+        final var purchase = PurchaseJpaEntity.newPurchase(
+                A_PURCHASE_ID, "Description", A_PURCHASE_DATE, BigDecimal.valueOf(100), A_FIXED_INSTANT);
         final var conversionRate = ConversionRate.with(
                 BigDecimal.valueOf(5.22),
                 LocalDate.of(2023, 10, 30),
                 "Brazil-Real");
 
         when(response.statusCode()).thenReturn(HttpStatus.OK.value());
-        when(response.body()).thenReturn("json response");
+        when(response.body()).thenReturn(ratesPayload("""
+                {"exchange_rate":"5.22","effective_date":"2023-10-30","country_currency_desc":"Brazil-Real"}"""));
 
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandlers.ofString().getClass())))
                 .thenReturn(response);
@@ -110,21 +128,18 @@ public class ExchangeRateServiceTest {
                 conversionRate.effectiveDate()))
                 .thenReturn(false);
 
-        try (MockedStatic<JsonUtils> mockedJsonUtils = Mockito.mockStatic(JsonUtils.class)) {
-            mockedJsonUtils.when(() -> JsonUtils.extractDataList(anyString(), any())).thenReturn(List.of(conversionRate));
+        exchangeRateService.updateExchangeRates(purchase);
 
-            exchangeRateService.updateExchangeRates(purchase);
-
-            verify(exchangeRateRepository, times(1))
-                    .notExistsByCountryCurrencyAndEffectiveDate(anyString(), any(LocalDate.class));
-            verify(exchangeRateRepository, never()).saveAll(any());
-            verify(metricsHelper, times(1)).registryFiscalServiceRetrievalElapsedTime(anyLong());
-        }
+        verify(exchangeRateRepository, times(1))
+                .notExistsByCountryCurrencyAndEffectiveDate(anyString(), any(LocalDate.class));
+        verify(exchangeRateRepository, never()).saveAll(any());
+        verify(metricsHelper, times(1)).registryFiscalServiceRetrievalElapsedTime(anyLong());
     }
 
     @Test
     void givenValidPurchase_whenCallUpdateExchangeRatesAndServiceUnavailable_thenThrowsRetryException() throws Exception {
-        final var purchase = PurchaseJpaEntity.newPurchase("Description", LocalDate.now(), BigDecimal.valueOf(100));
+        final var purchase = PurchaseJpaEntity.newPurchase(
+                A_PURCHASE_ID, "Description", A_PURCHASE_DATE, BigDecimal.valueOf(100), A_FIXED_INSTANT);
         final var expectedExceptionMessage = "Unexpected response from API";
 
         when(response.statusCode()).thenReturn(HttpStatus.SERVICE_UNAVAILABLE.value());
@@ -142,7 +157,8 @@ public class ExchangeRateServiceTest {
 
     @Test
     void givenValidPurchase_whenCallUpdateExchangeRatesAndIoException_thenThrowsRetryException() throws Exception {
-        final var purchase = PurchaseJpaEntity.newPurchase("Description", LocalDate.now(), BigDecimal.valueOf(100));
+        final var purchase = PurchaseJpaEntity.newPurchase(
+                A_PURCHASE_ID, "Description", A_PURCHASE_DATE, BigDecimal.valueOf(100), A_FIXED_INSTANT);
         final var expectedExceptionMessage = "Error processing request";
 
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandlers.ofString().getClass())))
@@ -161,7 +177,7 @@ public class ExchangeRateServiceTest {
     void givenValidPurchase_whenCallUpdateExchangeRates_thenTheUpstreamQueryPinsFieldsFilterSortAndPageSize()
             throws Exception {
         final var purchase = PurchaseJpaEntity.newPurchase(
-                "Description", LocalDate.of(2024, 7, 15), BigDecimal.valueOf(100));
+                A_PURCHASE_ID, "Description", A_PURCHASE_DATE, BigDecimal.valueOf(100), A_FIXED_INSTANT);
 
         when(response.statusCode()).thenReturn(HttpStatus.SERVICE_UNAVAILABLE.value());
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandlers.ofString().getClass())))
@@ -183,36 +199,33 @@ public class ExchangeRateServiceTest {
     @Test
     void givenDuplicatedCountryCurrencyInPayload_whenCallUpdateExchangeRates_thenOnlyTheFirstRateIsKept()
             throws Exception {
-        final var purchase = PurchaseJpaEntity.newPurchase("Description", LocalDate.now(), BigDecimal.valueOf(100));
+        final var purchase = PurchaseJpaEntity.newPurchase(
+                A_PURCHASE_ID, "Description", A_PURCHASE_DATE, BigDecimal.valueOf(100), A_FIXED_INSTANT);
         final var effectiveDate = LocalDate.of(2023, 10, 30);
-        final var first = ConversionRate.with(BigDecimal.valueOf(5.22), effectiveDate, "Brazil-Real");
-        final var duplicate = ConversionRate.with(BigDecimal.valueOf(9.99), effectiveDate, "Brazil-Real");
 
         when(response.statusCode()).thenReturn(HttpStatus.OK.value());
-        when(response.body()).thenReturn("json response");
+        when(response.body()).thenReturn(ratesPayload("""
+                {"exchange_rate":"5.22","effective_date":"2023-10-30","country_currency_desc":"Brazil-Real"}""", """
+                {"exchange_rate":"9.99","effective_date":"2023-10-30","country_currency_desc":"Brazil-Real"}"""));
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandlers.ofString().getClass())))
                 .thenReturn(response);
         when(exchangeRateRepository.notExistsByCountryCurrencyAndEffectiveDate("Brazil-Real", effectiveDate))
                 .thenReturn(true);
 
-        try (MockedStatic<JsonUtils> mockedJsonUtils = Mockito.mockStatic(JsonUtils.class)) {
-            mockedJsonUtils.when(() -> JsonUtils.extractDataList(anyString(), any()))
-                    .thenReturn(List.of(first, duplicate));
+        exchangeRateService.updateExchangeRates(purchase);
 
-            exchangeRateService.updateExchangeRates(purchase);
-
-            final var saved = ArgumentCaptor.forClass(List.class);
-            verify(exchangeRateRepository).saveAll(saved.capture());
-            Assertions.assertEquals(1, saved.getValue().size());
-            final var kept = (ExchangeRateJpaEntity) saved.getValue().get(0);
-            Assertions.assertEquals(BigDecimal.valueOf(5.22), kept.getRateValue());
-        }
+        final var saved = ArgumentCaptor.forClass(List.class);
+        verify(exchangeRateRepository).saveAll(saved.capture());
+        Assertions.assertEquals(1, saved.getValue().size());
+        final var kept = (ExchangeRateJpaEntity) saved.getValue().get(0);
+        Assertions.assertEquals(new BigDecimal("5.22"), kept.getRateValue());
     }
 
     @Test
     void givenAnActiveRetryContext_whenCallUpdateExchangeRatesFails_thenTheAttemptIsReportedWithoutMaskingTheFailure()
             throws Exception {
-        final var purchase = PurchaseJpaEntity.newPurchase("Description", LocalDate.now(), BigDecimal.valueOf(100));
+        final var purchase = PurchaseJpaEntity.newPurchase(
+                A_PURCHASE_ID, "Description", A_PURCHASE_DATE, BigDecimal.valueOf(100), A_FIXED_INSTANT);
         final var retryContext = new RetryContextSupport(null);
         retryContext.registerThrowable(new RetryableException("previous attempt"));
         RetrySynchronizationManager.register(retryContext);

@@ -41,8 +41,15 @@ The architecture suite reads the other suites' compiled output, so it depends on
 - Money and rates are written as exact `BigDecimal` string literals. Never
   `double`, and never `BigDecimal.valueOf` on a literal where the scale matters:
   a test that uses binary floating point can pass against a wrong implementation.
-- Dates are fixed literals (`LocalDate.of(2024, 1, 31)`), never `LocalDate.now()`.
-  Issue #1 owns injecting a `Clock` for the remaining time-dependent code.
+- Dates are fixed literals (`LocalDate.of(2024, 1, 31)`), never `LocalDate.now()`,
+  and instants are `Instant.parse(...)`, never `Instant.now()`.
+- Identity and time are injected, never ambient. A use case takes an
+  `IdentifierGenerator` and a `Clock`; a test supplies a fixed identifier and
+  `Clock.fixed(...)` and asserts the exact values that reach the repository.
+- Never assert the text of a Bean Validation message. It is translated to the
+  JVM's default locale, so the assertion passes in English and fails elsewhere.
+  Assert the constraint annotation that fired instead - it is stable, and it is
+  the stronger claim.
 - Country-currency fixtures use synthetic values. No production data, ever.
 
 ### Offline guarantee
@@ -84,15 +91,19 @@ the numbers.
 
 ### Known debt, and why it is recorded rather than hidden
 
-Two gates carry a baseline of pre-existing findings. Both are ratchets: a new
+One gate carries a baseline of pre-existing findings. It is a ratchet: a new
 violation fails the build, and a fixed violation must be removed from the
 baseline in the same pull request that fixes it, or the build fails for being
 out of date.
 
 | Baseline | Contents | Owner |
 | --- | --- | --- |
-| `config/archunit/frozen/` | Two `@Value` field injections in `ExchangeRateService` and `CountryCurrencyUpdaterService`. | #1, #3 |
 | `config/pmd/baseline.txt` | Five `PreserveStackTrace` violations: exceptions rethrown in a catch block without the original cause. | #3, #7 |
+
+The ArchUnit violation store that used to sit in `config/archunit/frozen/` is
+gone. It held two `@Value` field injections; issue #1 replaced them with
+constructor injection, so the store emptied and was deleted in the same change.
+That is what the ratchet is for, and what it looks like when it works.
 
 Seven mutants survive, all in `services.async` and `services.scheduled`, none in
 the critical financial rules:
@@ -154,26 +165,28 @@ Fix formatting in place.
 
 ### Toolchain
 
-The build has no `java.toolchain` declaration yet, so Gradle uses the ambient
-`JAVA_HOME`. Use a JDK 17 one: Lombok's annotation processor fails to initialise
-on much newer JDKs, and the build then dies in `compileJava`. Declaring the
-toolchain is scoped to issue #1. Until it lands:
+The build declares a Java 17 toolchain, so Gradle provisions and selects its own
+JDK regardless of `JAVA_HOME`. No `-Dorg.gradle.java.home` flag is needed, and
+the same bytecode is produced on a developer machine and on a CI runner.
+
+PIT forks its own JVM, so `tasks.named('pitest')` is given the same toolchain
+launcher explicitly. Without that it inherits the Gradle daemon's JDK and fails
+with `Unsupported class file major version` whenever the daemon is newer than
+the target.
+
+### Locale and time
+
+Nothing in the suite depends on the host's locale, default time zone, or wall
+clock. Validation tests assert the constraint that fired rather than its
+message, the application clock is `Clock.systemUTC()` injected as a bean, and
+identifiers come from an injected `IdentifierGenerator`.
+
+Verify determinism after touching anything in that area:
 
 ```bash
-./gradlew check -Dorg.gradle.java.home=/path/to/jdk-17
+./gradlew clean test -Duser.language=pt -Duser.country=BR
+./gradlew clean test -Duser.language=en -Duser.country=US
 ```
-
-### Locale
-
-Six tests in `CreatePurchaseApiInputValidationTest` assert English Bean
-Validation messages and fail under a non-English default locale. This is the
-defect issue #1 fixes. Until then:
-
-```bash
-./gradlew check -Duser.language=en -Duser.country=US
-```
-
-New tests must not assert Bean Validation message text.
 
 ## Verifying that the gates still bite
 
