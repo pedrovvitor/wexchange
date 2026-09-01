@@ -1,5 +1,10 @@
 plugins {
     id 'java'
+    id 'jacoco'
+    id 'pmd'
+    id 'jvm-test-suite'
+    id 'com.diffplug.spotless' version '6.25.0'
+    id 'info.solidsoft.pitest' version '1.15.0'
     id 'org.springframework.boot' version '3.1.5'
     id 'io.spring.dependency-management' version '1.1.3'
 }
@@ -10,6 +15,64 @@ version = '1.0-SNAPSHOT'
 repositories {
     mavenCentral()
 }
+
+// ---------------------------------------------------------------------------
+// Quality scope definitions.
+//
+// These lists are the single source of truth for every threshold in this build.
+// CI consumes the Gradle tasks below and must never re-declare a threshold.
+// ---------------------------------------------------------------------------
+
+/*
+ * Behavioural core of the application: use cases, application services, and the
+ * monetary/conversion rules. Issue #15 relocates these into explicit domain and
+ * application packages; these lists move with them and are never relaxed.
+ *
+ * JaCoCo matches a PACKAGE element against the full package name, and its `.*`
+ * suffix requires at least one further segment. Each package is therefore listed
+ * both exactly and with the subpackage wildcard; omitting the exact form leaves
+ * that package silently unverified.
+ */
+ext.domainApplicationCoveragePackages = [
+        'com.pedrolima.wexchange.usecases',
+        'com.pedrolima.wexchange.usecases.*',
+        'com.pedrolima.wexchange.services',
+        'com.pedrolima.wexchange.services.*',
+        'com.pedrolima.wexchange.utils',
+        'com.pedrolima.wexchange.utils.*',
+]
+
+/* PIT globs treat `*` as matching any characters, package separators included. */
+ext.domainApplicationClasses = [
+        'com.pedrolima.wexchange.usecases.*',
+        'com.pedrolima.wexchange.services.*',
+        'com.pedrolima.wexchange.utils.*',
+]
+
+/*
+ * Coverage exclusions. Nominal only: a class earns a place here when it holds no
+ * branch or arithmetic decision a test could meaningfully assert. Package-wide
+ * convenience exclusions are not accepted.
+ *
+ * - Main: Spring Boot bootstrap entry point. Its body is SpringApplication.run;
+ *   covering it would mean starting a real container for no assertion value.
+ *
+ * Lombok-generated members are excluded structurally rather than by pattern,
+ * through lombok.addLombokGeneratedAnnotation in lombok.config.
+ */
+ext.coverageExclusions = [
+        'com/pedrolima/wexchange/Main.class',
+]
+
+/*
+ * Critical financial rules. Mutation testing must leave no survivor here:
+ * rounding and the conversion window live in ConversionUtils, rate selection
+ * lives in DefaultConvertPurchaseUseCase.
+ */
+ext.criticalRuleClasses = [
+        'com.pedrolima.wexchange.utils.ConversionUtils',
+        'com.pedrolima.wexchange.usecases.purchase.convert.DefaultConvertPurchaseUseCase',
+]
 
 dependencies {
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.0.0'
@@ -43,6 +106,336 @@ dependencies {
     runtimeOnly 'com.h2database:h2'
 }
 
-test {
-    useJUnitPlatform()
+// ---------------------------------------------------------------------------
+// Test taxonomy.
+//
+//   test / unitTest   src/test/java              isolated, no Spring context
+//   integrationTest   src/integrationTest/java   several collaborating components
+//   architectureTest  src/architectureTest/java  ArchUnit fitness functions
+//
+// No suite may reach the public internet. See docs/engineering/test-taxonomy.md.
+// ---------------------------------------------------------------------------
+
+testing {
+    suites {
+        test {
+            useJUnitJupiter()
+        }
+
+        integrationTest(JvmTestSuite) {
+            dependencies {
+                implementation 'org.springframework.boot:spring-boot-starter-test'
+            }
+            targets.all {
+                testTask.configure {
+                    description = 'Runs integration tests over collaborating components.'
+                    shouldRunAfter(tasks.named('test'))
+                }
+            }
+        }
+
+        architectureTest(JvmTestSuite) {
+            dependencies {
+                implementation 'com.tngtech.archunit:archunit-junit5:1.2.1'
+            }
+            targets.all {
+                testTask.configure {
+                    description = 'Runs ArchUnit fitness functions over production and test code.'
+                    // OfflineTestsArchitectureTest reads the other suites' compiled
+                    // output, so it needs them built even when they are not run.
+                    dependsOn tasks.named('testClasses'), tasks.named('integrationTestClasses')
+                    shouldRunAfter(tasks.named('test'))
+                }
+            }
+        }
+    }
+}
+
+/*
+ * The extra suites compile against the main *class directories* rather than the
+ * packaged jar. ArchUnit refuses to analyse jars, and reading the same class
+ * files the unit suite reads keeps coverage attribution consistent.
+ */
+configurations {
+    integrationTestImplementation.extendsFrom implementation
+    integrationTestRuntimeOnly.extendsFrom runtimeOnly
+    architectureTestImplementation.extendsFrom implementation
+    architectureTestRuntimeOnly.extendsFrom runtimeOnly
+}
+
+dependencies {
+    integrationTestImplementation sourceSets.main.output
+    architectureTestImplementation sourceSets.main.output
+}
+
+tasks.named('test') {
+    description = 'Runs isolated unit tests.'
+}
+
+tasks.register('unitTest') {
+    group = 'verification'
+    description = 'Alias for the unit test suite (src/test/java).'
+    dependsOn tasks.named('test')
+}
+
+/*
+ * The aggregate gate. Spotless and PMD attach themselves; the rest is wired here.
+ * Mutation testing is included because it currently costs about twenty seconds.
+ * If it outgrows the pull-request budget, move it to a scheduled workflow as
+ * docs/engineering/quality-foundation.md permits - do not lower its thresholds.
+ */
+tasks.named('check') {
+    dependsOn tasks.named('integrationTest'),
+            tasks.named('architectureTest'),
+            tasks.named('jacocoTestCoverageVerification'),
+            tasks.named('mutationTest')
+}
+
+// ---------------------------------------------------------------------------
+// Coverage.
+// ---------------------------------------------------------------------------
+
+jacoco {
+    toolVersion = '0.8.11'
+}
+
+def coveredClassDirectories = files(sourceSets.main.output).asFileTree
+        .matching { exclude(project.ext.coverageExclusions) }
+
+def allTestTasks = [
+        tasks.named('test'),
+        tasks.named('integrationTest'),
+        tasks.named('architectureTest'),
+]
+
+tasks.named('jacocoTestReport', JacocoReport) {
+    description = 'Aggregates coverage from the unit, integration, and architecture suites.'
+    dependsOn allTestTasks
+    executionData fileTree(layout.buildDirectory.dir('jacoco')).matching { include('*.exec') }
+    classDirectories.setFrom(coveredClassDirectories)
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = true
+    }
+}
+
+tasks.named('jacocoTestCoverageVerification', JacocoCoverageVerification) {
+    dependsOn tasks.named('jacocoTestReport')
+    executionData fileTree(layout.buildDirectory.dir('jacoco')).matching { include('*.exec') }
+    classDirectories.setFrom(coveredClassDirectories)
+
+    violationRules {
+        // Whole production artefact.
+        rule {
+            element = 'BUNDLE'
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.80
+            }
+            limit {
+                counter = 'BRANCH'
+                value = 'COVEREDRATIO'
+                minimum = 0.70
+            }
+        }
+        // Behavioural core, evaluated per package so that a well-covered package
+        // cannot mask a neglected one.
+        rule {
+            element = 'PACKAGE'
+            includes = project.ext.domainApplicationCoveragePackages
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.90
+            }
+            limit {
+                counter = 'BRANCH'
+                value = 'COVEREDRATIO'
+                minimum = 0.85
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Mutation testing.
+// ---------------------------------------------------------------------------
+
+pitest {
+    pitestVersion = '1.15.3'
+    junit5PluginVersion = '1.2.1'
+    targetClasses = project.ext.domainApplicationClasses
+    targetTests = ['com.pedrolima.wexchange.*']
+    /*
+     * DEFAULTS alone does not mutate inline constants, so the `6` in the
+     * conversion window generated no mutant at all and that half of the critical
+     * rule was verified only vacuously. INLINE_CONSTS closes it.
+     */
+    mutators = ['DEFAULTS', 'INLINE_CONSTS']
+    mutationThreshold = 80
+    testStrengthThreshold = 90
+    timestampedReports = false
+    outputFormats = ['XML', 'HTML']
+    failWhenNoMutations = true
+    threads = Math.max(1, Runtime.runtime.availableProcessors().intdiv(2))
+}
+
+tasks.register('pitestCriticalRulesVerification') {
+    group = 'verification'
+    description = 'Fails when a mutant survives in the rounding, conversion-window, or rate-selection rules.'
+    dependsOn tasks.named('pitest')
+
+    def report = layout.buildDirectory.file('reports/pitest/mutations.xml')
+    def critical = project.ext.criticalRuleClasses
+    outputs.upToDateWhen { false }
+
+    doLast {
+        def file = report.get().asFile
+        if (!file.exists()) {
+            throw new GradleException("PIT report not found at ${file}. Run ./gradlew pitest first.")
+        }
+        def mutations = new groovy.xml.XmlSlurper().parse(file)
+        def analysed = mutations.mutation.findAll { m -> critical.contains(m.mutatedClass.text()) }
+        if (analysed.isEmpty()) {
+            throw new GradleException("PIT produced no mutant for ${critical}."
+                    + " The rule would pass vacuously; check targetClasses and mutators.")
+        }
+
+        def survivors = analysed.findAll { m -> m.@status.text() != 'KILLED' }
+        if (!survivors.isEmpty()) {
+            def detail = survivors.collect { m ->
+                "  ${m.@status.text()} ${m.mutatedClass.text()}#${m.mutatedMethod.text()}" +
+                        " line ${m.lineNumber.text()}: ${m.description.text()}"
+            }.join('\n')
+            throw new GradleException("${survivors.size()} mutant(s) not killed in the critical"
+                    + " financial rules:\n${detail}\nThere is no exemption list: kill the mutant, or"
+                    + " restructure the code so it is never generated.")
+        }
+        logger.lifecycle("No surviving mutants in critical financial rules"
+                + " (${analysed.size()} mutants, all killed).")
+    }
+}
+
+tasks.register('mutationTest') {
+    group = 'verification'
+    description = 'Runs mutation testing plus the critical-rule survivor check.'
+    dependsOn tasks.named('pitestCriticalRulesVerification')
+}
+
+// ---------------------------------------------------------------------------
+// Formatting and static analysis. Configuration is owned by this repository.
+// ---------------------------------------------------------------------------
+
+spotless {
+    java {
+        target 'src/*/java/**/*.java'
+        toggleOffOn()
+        importOrderFile 'config/spotless/wexchange.importorder'
+        removeUnusedImports()
+        indentWithSpaces(4)
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+    format 'misc', {
+        target '*.gradle', '*.md', 'config/**/*.xml', 'docs/**/*.md'
+        trimTrailingWhitespace()
+        indentWithSpaces(4)
+        endWithNewline()
+    }
+}
+
+pmd {
+    toolVersion = '6.55.0'
+    ruleSetFiles = files('config/pmd/ruleset.xml')
+    ruleSets = []
+    consoleOutput = true
+    /*
+     * The PMD tasks themselves only report. pmdBaselineVerification below is the
+     * gate: it fails on any violation that is not already recorded as known debt,
+     * which lets a rule stay switched on while the debt it found is paid off
+     * under the issue that owns that code.
+     */
+    ignoreFailures = true
+}
+
+tasks.withType(Pmd).configureEach {
+    if (name != 'pmdMain') {
+        ruleSetFiles = files('config/pmd/ruleset-test.xml')
+    }
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+/*
+ * Known static-analysis debt, as "rule|path|count". Counts, not line numbers, so
+ * that moving code does not churn the file. This is a ratchet in both directions:
+ * a new violation fails the build, and a fixed one must be removed from the
+ * baseline in the same pull request, or the build fails for being out of date.
+ */
+def pmdBaselineFile = file('config/pmd/baseline.txt')
+
+tasks.register('pmdBaselineVerification') {
+    group = 'verification'
+    description = 'Fails on any PMD violation that is not recorded in config/pmd/baseline.txt.'
+    dependsOn tasks.withType(Pmd)
+
+    def reportDir = layout.buildDirectory.dir('reports/pmd')
+    def baseline = pmdBaselineFile
+    def rootDir = projectDir
+    outputs.upToDateWhen { false }
+
+    doLast {
+        def namespace = 'http://pmd.sourceforge.net/report/2.0.0'
+        def observed = [:].withDefault { 0 }
+        reportDir.get().asFile.listFiles({ f -> f.name.endsWith('.xml') } as FileFilter)?.each { report ->
+            def parsed = new groovy.xml.XmlSlurper()
+            parsed.setKeepIgnorableWhitespace(false)
+            def root = parsed.parse(report)
+            root.'*'.findAll { it.name() == 'file' }.each { fileNode ->
+                def path = rootDir.toPath().relativize(new File(fileNode.@name.text()).toPath())
+                        .toString().replace('\\', '/')
+                fileNode.'*'.findAll { it.name() == 'violation' }.each { violation ->
+                    observed["${violation.@rule.text()}|${path}".toString()] += 1
+                }
+            }
+        }
+
+        def expected = [:]
+        if (baseline.exists()) {
+            baseline.eachLine('UTF-8') { rawLine ->
+                def line = rawLine.trim()
+                if (line.isEmpty() || line.startsWith('#')) {
+                    return
+                }
+                def parts = line.split('\\|')
+                expected["${parts[0]}|${parts[1]}".toString()] = parts[2] as int
+            }
+        }
+
+        def problems = []
+        (observed.keySet() + expected.keySet()).toSorted().each { key ->
+            int seen = observed[key] ?: 0
+            int allowed = expected[key] ?: 0
+            if (seen > allowed) {
+                problems << "  NEW      ${key} (${seen} found, ${allowed} allowed)"
+            } else if (seen < allowed) {
+                problems << "  STALE    ${key} (${seen} found, ${allowed} still in baseline - remove the entry)"
+            }
+        }
+
+        if (!problems.isEmpty()) {
+            throw new GradleException(
+                    "PMD baseline is out of date:\n${problems.join('\n')}\n"
+                            + "Fix the new violations, or update ${baseline} when debt has been paid off.")
+        }
+        logger.lifecycle("PMD baseline satisfied (${expected.values().sum() ?: 0} known violation(s)).")
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('pmdBaselineVerification')
 }

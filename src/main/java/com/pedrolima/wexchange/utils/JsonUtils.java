@@ -24,4 +24,3 @@ public class JsonUtils {
         return OBJECT_MAPPER.readValue(dataArray.toString(), type);
     }
 }
-

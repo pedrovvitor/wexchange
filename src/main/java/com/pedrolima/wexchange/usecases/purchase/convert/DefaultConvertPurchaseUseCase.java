@@ -76,16 +76,32 @@ public class DefaultConvertPurchaseUseCase extends ConvertPurchaseUseCase {
         final var countryCurrencies = findExchangeRates(input, purchase, availablePeriod);
 
         if (countryCurrencies.size() > 1) {
-            throw new MultipleCountryCurrenciesException("%d Country currencies found containing %s it: %s"
-                    .formatted(
-                            countryCurrencies.size(),
-                            input.countryCurrency(),
-                            countryCurrencies.stream().map(ExchangeRateJpaEntity::getCountryCurrency)
-                                    .collect(Collectors.joining(", "))
-                    ));
+            throw new MultipleCountryCurrenciesException(
+                    describeAmbiguity(input.countryCurrency(), countryCurrencies));
         }
 
         return calculateAndProduceOutput(purchase, countryCurrencies.stream().findFirst().get());
+    }
+
+    /**
+     * Builds the message a caller receives with the 409 response.
+     *
+     * <p>Written as concatenation rather than {@code String.formatted}. The
+     * message is identical either way, but a varargs call carries an array-length
+     * constant that mutation testing can widen without changing the output, and
+     * this class must leave no surviving mutant. See
+     * {@code docs/engineering/test-taxonomy.md}.
+     */
+    private static String describeAmbiguity(
+            final String requestedCountryCurrency,
+            final List<ExchangeRateJpaEntity> matches
+    ) {
+        final var matched = matches.stream()
+                .map(ExchangeRateJpaEntity::getCountryCurrency)
+                .collect(Collectors.joining(", "));
+
+        return matches.size() + " Country currencies found containing "
+                + requestedCountryCurrency + " it: " + matched;
     }
 
     private List<ExchangeRateJpaEntity> findExchangeRates(

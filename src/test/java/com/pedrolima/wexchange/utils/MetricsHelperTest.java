@@ -59,5 +59,34 @@ public class MetricsHelperTest {
         assertThat(counter).isNotNull();
         assertThat(counter.count()).isEqualTo(1);
     }
-}
 
+    @Test
+    public void registryUpsertCountryCurrenciesElapsedTime_shouldRecordElapsedTime() {
+        long time = 2500;
+        metricsHelper.registryUpsertCountryCurrenciesElapsedTime(time);
+
+        Timer timer = meterRegistry.find("wexchange.application.update..retrieval.time").timer();
+        assertThat(timer).isNotNull();
+        assertThat(timer.count()).isEqualTo(1);
+        assertThat(timer.totalTime(TimeUnit.NANOSECONDS)).isEqualTo(time);
+    }
+
+    @Test
+    public void incrementSuccessfulRequestMetric_shouldIncrementSuccessCount() {
+        metricsHelper.incrementSuccessfulRequestMetric();
+
+        Counter counter = meterRegistry.find("wexchange.application.integration.fiscal.request.success.count").counter();
+        assertThat(counter).isNotNull();
+        assertThat(counter.count()).isEqualTo(1);
+    }
+
+    @Test
+    public void incrementMetricTwice_shouldAccumulateRatherThanReset() {
+        metricsHelper.incrementRequestErrorMetric();
+        metricsHelper.incrementRequestErrorMetric();
+
+        Counter counter = meterRegistry.find("wexchange.application.integration.fiscal.request.error.count").counter();
+        assertThat(counter).isNotNull();
+        assertThat(counter.count()).isEqualTo(2);
+    }
+}

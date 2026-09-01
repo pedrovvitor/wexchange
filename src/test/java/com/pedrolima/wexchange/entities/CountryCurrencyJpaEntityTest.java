@@ -21,4 +21,3 @@ public class CountryCurrencyJpaEntityTest {
         assertEquals(currency, countryCurrencyJpaEntity.getCurrency());
     }
 }
-

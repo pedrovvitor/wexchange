@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="wexchange-tests"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0
+                             https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+    <description>
+        Static analysis rules for Wexchange test code (unit, integration, and
+        architecture suites).
+
+        Tests are held to correctness rather than production design constraints:
+        a test may be long or repetitive if that makes the failure obvious. What
+        it may not be is silently passing.
+    </description>
+
+    <!--
+        JUnitTestsShouldIncludeAssert is deliberately absent. PMD 6.55 recognises
+        only assert*/fail* calls and offers no way to extend that list, so it
+        reports every MockMvc andExpect chain, every ArchUnit rule.check, and
+        every Mockito verify as an assertion-free test: eighteen false positives
+        and no true ones on this codebase. Reinstate it when the project moves to
+        PMD 7, which supports extraAssertMethodNames.
+    -->
+    <rule ref="category/java/errorprone.xml/UnnecessaryBooleanAssertion"/>
+    <rule ref="category/java/errorprone.xml/UnusedNullCheckInEquals"/>
+    <rule ref="category/java/errorprone.xml/AvoidCatchingThrowable"/>
+    <rule ref="category/java/bestpractices.xml/AvoidPrintStackTrace"/>
+    <rule ref="category/java/bestpractices.xml/SystemPrintln"/>
+    <rule ref="category/java/bestpractices.xml/UnusedLocalVariable"/>
+    <rule ref="category/java/bestpractices.xml/UnusedPrivateField"/>
+
+</ruleset>

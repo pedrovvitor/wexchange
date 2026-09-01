@@ -23,9 +23,9 @@ public interface CountryCurrencyApi {
     @Operation(
             summary = "Retrieve all country currencies available in fiscal_service",
             description = """
-                              This endpoint retrieves a paginated list of all country currencies available in the fiscal service. 
-                              It supports pagination to handle large datasets efficiently. Users can optionally filter the results 
-                              by specifying a 'country_currency' parameter, which will return only those currencies that contain the 
+                              This endpoint retrieves a paginated list of all country currencies available in the fiscal service.
+                              It supports pagination to handle large datasets efficiently. Users can optionally filter the results
+                              by specifying a 'country_currency' parameter, which will return only those currencies that contain the
                               provided string, ignoring case.
                           """
     )
