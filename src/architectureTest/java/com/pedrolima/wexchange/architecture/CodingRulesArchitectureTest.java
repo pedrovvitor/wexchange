@@ -4,7 +4,6 @@ import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
-import com.tngtech.archunit.library.freeze.FreezingArchRule;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -62,15 +61,15 @@ class CodingRulesArchitectureTest {
     }
 
     /**
-     * Frozen rather than green. Two {@code @Value} fields predate this gate and
-     * belong to issues #1 and #3; the store in {@code config/archunit/frozen}
-     * records exactly those two, so any new field injection fails the build.
-     * Removing a frozen violation is a ratchet: refreeze only downwards.
+     * Green rather than frozen. Two {@code @Value} fields were recorded as debt
+     * when this gate was introduced; issue #1 replaced them with constructor
+     * injection, so the violation store was emptied and deleted in the same
+     * change. The rule now stands on its own.
      */
     @Test
-    @DisplayName("no new field injection is introduced")
-    void givenProductionCode_whenCheckingInjection_thenNoNewFieldInjectionIsIntroduced() {
-        FreezingArchRule.freeze(NO_CLASSES_SHOULD_USE_FIELD_INJECTION).check(productionClasses);
+    @DisplayName("collaborators are injected through constructors, never into fields")
+    void givenProductionCode_whenCheckingInjection_thenNoFieldInjectionIsUsed() {
+        NO_CLASSES_SHOULD_USE_FIELD_INJECTION.check(productionClasses);
     }
 
     @Test

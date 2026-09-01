@@ -6,9 +6,11 @@ import com.pedrolima.wexchange.purchase.models.CreatePurchaseApiInput;
 import com.pedrolima.wexchange.purchase.models.CreatePurchaseApiOutput;
 import com.pedrolima.wexchange.repositories.PurchaseRepository;
 import com.pedrolima.wexchange.services.async.ExchangeRateService;
+import com.pedrolima.wexchange.usecases.IdentifierGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 
@@ -36,9 +38,18 @@ public class DefaultCreatePurchaseUseCase extends CreatePurchaseUseCase {
 
     private final ExchangeRateService exchangeRateService;
 
+    private final IdentifierGenerator identifierGenerator;
+
+    private final Clock clock;
+
     @Override
     public CreatePurchaseApiOutput execute(final CreatePurchaseApiInput input) {
-        final var purchase = PurchaseJpaEntity.newPurchase(input.description(), input.date(), input.amount());
+        final var purchase = PurchaseJpaEntity.newPurchase(
+                identifierGenerator.newIdentifier(),
+                input.description(),
+                input.date(),
+                input.amount(),
+                clock.instant());
         final var purchaseJpaEntity = purchaseRepository.save(purchase);
 
         if (purchaseRepository.countByPurchaseDate(purchase.getPurchaseDate()) <= 1) {

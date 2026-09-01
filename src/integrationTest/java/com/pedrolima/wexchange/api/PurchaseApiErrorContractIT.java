@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -83,8 +84,9 @@ class PurchaseApiErrorContractIT {
     void givenValidPurchase_whenCreating_then201WithConversionLocation() throws Exception {
         when(createPurchaseUseCase.execute(any(CreatePurchaseApiInput.class)))
                 .thenReturn(CreatePurchaseApiOutput.with(
-                        PurchaseJpaEntity.newPurchase("A valid description", LocalDate.of(2024, 1, 31),
-                                new BigDecimal("10.00")),
+                        PurchaseJpaEntity.newPurchase(PURCHASE_ID, "A valid description",
+                                LocalDate.of(2024, 1, 31), new BigDecimal("10.00"),
+                                Instant.parse("2024-01-31T12:00:00Z")),
                         List.of()));
 
         mockMvc.perform(post("/v1/purchases")

@@ -16,6 +16,21 @@ repositories {
     mavenCentral()
 }
 
+/*
+ * The supported Java version. Declaring the toolchain makes the build select its
+ * own JDK rather than inheriting whatever JAVA_HOME happens to be, so the same
+ * bytecode is produced on a developer machine and on a CI runner. Lombok's
+ * annotation processor fails to initialise on much newer JDKs, which is how an
+ * undeclared toolchain used to break `compileJava` on this repository.
+ */
+ext.javaLanguageVersion = JavaLanguageVersion.of(17)
+
+java {
+    toolchain {
+        languageVersion = project.ext.javaLanguageVersion
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Quality scope definitions.
 //
@@ -103,7 +118,12 @@ dependencies {
 
     annotationProcessor 'org.projectlombok:lombok'
 
-    runtimeOnly 'com.h2database:h2'
+    /*
+     * H2 backs test-only configuration. It must never reach the production
+     * artifact, so it is scoped to the test runtimes rather than to runtimeOnly.
+     * Issue #5 replaces it with PostgreSQL through Testcontainers.
+     */
+    testRuntimeOnly 'com.h2database:h2'
 }
 
 // ---------------------------------------------------------------------------
@@ -166,6 +186,10 @@ configurations {
 dependencies {
     integrationTestImplementation sourceSets.main.output
     architectureTestImplementation sourceSets.main.output
+
+    // Declared here rather than beside the other dependencies because the
+    // integrationTest configurations only exist once the suite above is defined.
+    integrationTestRuntimeOnly 'com.h2database:h2'
 }
 
 tasks.named('test') {
@@ -280,6 +304,18 @@ pitest {
     outputFormats = ['XML', 'HTML']
     failWhenNoMutations = true
     threads = Math.max(1, Runtime.runtime.availableProcessors().intdiv(2))
+}
+
+/*
+ * PIT forks its own JVM and would otherwise inherit the Gradle daemon's JDK
+ * rather than the toolchain, which fails with "Unsupported class file major
+ * version" whenever the daemon runs on a newer JDK than the one the project
+ * targets. Point it at the same launcher everything else uses.
+ */
+tasks.named('pitest') {
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = project.ext.javaLanguageVersion
+    }
 }
 
 tasks.register('pitestCriticalRulesVerification') {

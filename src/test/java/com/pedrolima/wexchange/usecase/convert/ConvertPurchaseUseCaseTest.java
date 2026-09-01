@@ -22,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
@@ -43,6 +44,10 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class ConvertPurchaseUseCaseTest {
+
+    private static final String A_PURCHASE_ID = "6e2b8a5d-3f17-4c90-a4e6-70d5c1b8f293";
+
+    private static final Instant A_FIXED_INSTANT = Instant.parse("2024-01-31T12:00:00Z");
 
     @Mock
     private PurchaseRepository purchaseRepository;
@@ -123,7 +128,9 @@ public class ConvertPurchaseUseCaseTest {
     void givenNonExistentCountryCurrency_whenCallsExecute_thenThrowExchangeRateNotFoundException() {
         final var input = new ConvertPurchaseApiInput(UUID.randomUUID().toString(), "XPTO");
         final var expectedExceptionMessage = "Exchange rate not found for currency XPTO";
-        final var aPurchase = PurchaseJpaEntity.newPurchase("random Description", LocalDate.now(), BigDecimal.valueOf(100));
+        final var aPurchase = PurchaseJpaEntity.newPurchase(
+                A_PURCHASE_ID, "random Description", LocalDate.of(2024, 1, 31),
+                BigDecimal.valueOf(100), A_FIXED_INSTANT);
 
         when(purchaseRepository.findById(input.purchaseId())).thenReturn(Optional.of(aPurchase));
         when(exchangeRateRepository.findLatestRatesByCountryCurrencyAndDateRange(
@@ -146,7 +153,9 @@ public class ConvertPurchaseUseCaseTest {
     @Test
     void givenMultipleExchangeRatesFound_whenExecute_thenThrowMultipleCountryCurrenciesException() {
         final var input = new ConvertPurchaseApiInput(UUID.randomUUID().toString(), "Real");
-        final var purchase = PurchaseJpaEntity.newPurchase("Test Purchase", LocalDate.now(), BigDecimal.valueOf(100));
+        final var purchase = PurchaseJpaEntity.newPurchase(
+                A_PURCHASE_ID, "Test Purchase", LocalDate.of(2024, 1, 31),
+                BigDecimal.valueOf(100), A_FIXED_INSTANT);
         final var rate1 = ExchangeRateJpaEntity.newConversionRate(
                 "Brazil-Real", LocalDate.of(2023, 12, 1), BigDecimal.valueOf(5.000));
         final var rate2 = ExchangeRateJpaEntity.newConversionRate(
@@ -170,9 +179,10 @@ public class ConvertPurchaseUseCaseTest {
     @Test
     void givenValidInput_whenCallsExecute_thenReturnConvertedPurchaseDetails() {
         final var aDescription = "Test Purchase";
-        final var aDate = LocalDate.now();
+        final var aDate = LocalDate.of(2024, 1, 31);
         final var anAmount = BigDecimal.valueOf(150).setScale(2, RoundingMode.HALF_EVEN);
-        final var purchase = PurchaseJpaEntity.newPurchase(aDescription, aDate, anAmount);
+        final var purchase = PurchaseJpaEntity.newPurchase(
+                A_PURCHASE_ID, aDescription, aDate, anAmount, A_FIXED_INSTANT);
 
         final var aCountryCurrency = "Brazil-Real";
         final var anInput = ConvertPurchaseApiInput.with(purchase.getId(), aCountryCurrency);
@@ -223,8 +233,8 @@ public class ConvertPurchaseUseCaseTest {
     @ValueSource(ints = {MIN_COUNTRY_CURRENCY_LENGTH, MAX_COUNTRY_CURRENCY_LENGTH})
     void givenCountryCurrencyAtTheLengthBoundary_whenCallsExecute_thenItIsAccepted(final int length) {
         final var countryCurrency = "C".repeat(length);
-        final var purchase = PurchaseJpaEntity.newPurchase("Test Purchase", LocalDate.of(2024, 1, 31),
-                BigDecimal.valueOf(150).setScale(2, RoundingMode.HALF_EVEN));
+        final var purchase = PurchaseJpaEntity.newPurchase(A_PURCHASE_ID, "Test Purchase", LocalDate.of(2024, 1, 31),
+                BigDecimal.valueOf(150).setScale(2, RoundingMode.HALF_EVEN), A_FIXED_INSTANT);
         final var input = ConvertPurchaseApiInput.with(purchase.getId(), countryCurrency);
 
         when(purchaseRepository.findById(input.purchaseId())).thenReturn(Optional.of(purchase));
@@ -251,8 +261,8 @@ public class ConvertPurchaseUseCaseTest {
     @Test
     void givenValidInput_whenCallsExecute_thenTheRateIsSelectedWithinTheSixMonthsBeforeThePurchase() {
         final var purchaseDate = LocalDate.of(2024, 7, 15);
-        final var purchase = PurchaseJpaEntity.newPurchase("Test Purchase", purchaseDate,
-                BigDecimal.valueOf(150).setScale(2, RoundingMode.HALF_EVEN));
+        final var purchase = PurchaseJpaEntity.newPurchase(A_PURCHASE_ID, "Test Purchase", purchaseDate,
+                BigDecimal.valueOf(150).setScale(2, RoundingMode.HALF_EVEN), A_FIXED_INSTANT);
         final var input = ConvertPurchaseApiInput.with(purchase.getId(), "Brazil-Real");
 
         when(purchaseRepository.findById(input.purchaseId())).thenReturn(Optional.of(purchase));
@@ -275,8 +285,8 @@ public class ConvertPurchaseUseCaseTest {
 
     @Test
     void givenValidInput_whenCallsExecute_thenTheResponseAdvertisesTheRelatedEndpoints() {
-        final var purchase = PurchaseJpaEntity.newPurchase("Test Purchase", LocalDate.of(2024, 1, 31),
-                BigDecimal.valueOf(150).setScale(2, RoundingMode.HALF_EVEN));
+        final var purchase = PurchaseJpaEntity.newPurchase(A_PURCHASE_ID, "Test Purchase", LocalDate.of(2024, 1, 31),
+                BigDecimal.valueOf(150).setScale(2, RoundingMode.HALF_EVEN), A_FIXED_INSTANT);
         final var input = ConvertPurchaseApiInput.with(purchase.getId(), "Brazil-Real");
 
         when(purchaseRepository.findById(input.purchaseId())).thenReturn(Optional.of(purchase));

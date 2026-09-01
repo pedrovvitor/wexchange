@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -24,6 +25,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class EntityIdentityTest {
 
+    private static final String A_PURCHASE_ID = "7d4e1b90-5c3a-4f28-b6d1-08a2e9f5c7b3";
+
+    private static final Instant A_FIXED_INSTANT = Instant.parse("2024-01-31T12:00:00Z");
+
     @Nested
     @DisplayName("purchase identity")
     class PurchaseIdentity {
@@ -38,9 +43,23 @@ class EntityIdentityTest {
         }
 
         @Test
-        @DisplayName("two separately created purchases are distinct even with identical details")
-        void givenIdenticalDetails_whenComparing_thenPurchasesDiffer() {
-            assertNotEquals(newPurchase(), newPurchase());
+        @DisplayName("identical details under different identifiers are still different records")
+        void givenIdenticalDetailsDifferentIds_whenComparing_thenPurchasesDiffer() {
+            assertNotEquals(purchaseWithId("a1b2c3d4-0000-4000-8000-000000000001"),
+                    purchaseWithId("a1b2c3d4-0000-4000-8000-000000000002"));
+        }
+
+        @Test
+        @DisplayName("the same identifier is the same record even when the details differ")
+        void givenSameIdDifferentDetails_whenComparing_thenPurchasesAreEqual() {
+            final var first = PurchaseJpaEntity.newPurchase(
+                    A_PURCHASE_ID, "A purchase", LocalDate.of(2024, 1, 31), new BigDecimal("10.00"), A_FIXED_INSTANT);
+            final var second = PurchaseJpaEntity.newPurchase(
+                    A_PURCHASE_ID, "Another purchase", LocalDate.of(2023, 6, 1), new BigDecimal("99.99"),
+                    A_FIXED_INSTANT);
+
+            assertEquals(first, second);
+            assertEquals(first.hashCode(), second.hashCode());
         }
 
         @Test
@@ -53,7 +72,12 @@ class EntityIdentityTest {
         }
 
         private PurchaseJpaEntity newPurchase() {
-            return PurchaseJpaEntity.newPurchase("A purchase", LocalDate.of(2024, 1, 31), new BigDecimal("10.00"));
+            return purchaseWithId(A_PURCHASE_ID);
+        }
+
+        private PurchaseJpaEntity purchaseWithId(final String id) {
+            return PurchaseJpaEntity.newPurchase(
+                    id, "A purchase", LocalDate.of(2024, 1, 31), new BigDecimal("10.00"), A_FIXED_INSTANT);
         }
     }
 

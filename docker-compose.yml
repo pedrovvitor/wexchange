@@ -7,6 +7,10 @@ services:
       dockerfile: Dockerfile
     env_file:
         - .env.local
+    environment:
+      # Explicit, and overriding whatever the image was built with. The
+      # application no longer picks a profile for you.
+      SPRING_PROFILES_ACTIVE: production
     image: wexchange_app
     ports:
       - "8080:8080"
