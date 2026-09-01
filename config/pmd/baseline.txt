@@ -1,0 +1,15 @@
+# PMD baseline: static-analysis debt that predates the quality gate.
+#
+# Format: <rule>|<repository-relative path>|<count>
+#
+# This file is a ratchet. `./gradlew pmdBaselineVerification` fails when a file
+# gains a violation, and equally when it loses one without the entry being
+# removed here. Never add a line to make a new change pass; fix the violation.
+#
+# PreserveStackTrace: five call sites raise a new exception inside a catch block
+# without passing the original as the cause, so the upstream failure reason is
+# lost from the logs. Owned by #3 (Fiscal Data client) and #7 (HTTP contract);
+# RetryableException already has an unused (message, cause) constructor.
+PreserveStackTrace|src/main/java/com/pedrolima/wexchange/services/async/ExchangeRateService.java|1
+PreserveStackTrace|src/main/java/com/pedrolima/wexchange/services/scheduled/CountryCurrencyUpdaterService.java|2
+PreserveStackTrace|src/main/java/com/pedrolima/wexchange/utils/CustomLocalDateDeserializer.java|2

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="wexchange-production"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0
+                             https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+    <description>
+        Static analysis rules for Wexchange production code.
+
+        The set is deliberately small and high signal. Every rule here maps to a
+        defect class the engineering contract cares about: monetary correctness,
+        resource safety, error handling, and boundary hygiene. Style-only rules
+        are left to Spotless.
+
+        Adding a rule is welcome. Removing one, or widening an exclude-pattern,
+        requires evidence in the pull request that the rule is wrong for this
+        codebase, not merely inconvenient.
+    </description>
+
+    <!-- Monetary and numeric correctness. -->
+    <rule ref="category/java/errorprone.xml/AvoidDecimalLiteralsInBigDecimalConstructor"/>
+    <rule ref="category/java/performance.xml/BigIntegerInstantiation"/>
+    <rule ref="category/java/errorprone.xml/CompareObjectsWithEquals"/>
+    <rule ref="category/java/errorprone.xml/UseEqualsToCompareStrings"/>
+
+    <!-- Error handling. Swallowed or generic failures hide production defects. -->
+    <rule ref="category/java/errorprone.xml/AvoidCatchingNPE"/>
+    <rule ref="category/java/errorprone.xml/AvoidCatchingThrowable"/>
+    <rule ref="category/java/errorprone.xml/DoNotThrowExceptionInFinally"/>
+    <rule ref="category/java/errorprone.xml/ReturnFromFinallyBlock"/>
+    <rule ref="category/java/design.xml/AvoidThrowingNullPointerException"/>
+    <rule ref="category/java/design.xml/AvoidThrowingRawExceptionTypes"/>
+    <rule ref="category/java/bestpractices.xml/AvoidReassigningCatchVariables"/>
+    <rule ref="category/java/bestpractices.xml/PreserveStackTrace"/>
+
+    <!-- Resource safety on outbound calls and streams. -->
+    <rule ref="category/java/errorprone.xml/CloseResource"/>
+    <rule ref="category/java/errorprone.xml/UnconditionalIfStatement"/>
+
+    <!-- Boundary hygiene. -->
+    <rule ref="category/java/errorprone.xml/AvoidBranchingStatementAsLastInLoop"/>
+    <rule ref="category/java/errorprone.xml/BrokenNullCheck"/>
+    <rule ref="category/java/errorprone.xml/MisplacedNullCheck"/>
+    <rule ref="category/java/errorprone.xml/OverrideBothEqualsAndHashcode"/>
+    <rule ref="category/java/errorprone.xml/SuspiciousEqualsMethodName"/>
+    <rule ref="category/java/errorprone.xml/UselessOperationOnImmutable"/>
+    <rule ref="category/java/bestpractices.xml/UnusedPrivateField"/>
+    <rule ref="category/java/bestpractices.xml/UnusedPrivateMethod"/>
+    <rule ref="category/java/bestpractices.xml/UnusedLocalVariable"/>
+    <rule ref="category/java/bestpractices.xml/UnusedFormalParameter"/>
+
+    <!-- Observability and telemetry hygiene. -->
+    <rule ref="category/java/bestpractices.xml/SystemPrintln"/>
+    <rule ref="category/java/bestpractices.xml/AvoidPrintStackTrace"/>
+
+    <!-- Complexity ceiling. Raising these numbers needs a reason in review. -->
+    <rule ref="category/java/design.xml/CyclomaticComplexity">
+        <properties>
+            <property name="methodReportLevel" value="10"/>
+            <property name="classReportLevel" value="60"/>
+        </properties>
+    </rule>
+    <rule ref="category/java/design.xml/NPathComplexity"/>
+    <rule ref="category/java/design.xml/CognitiveComplexity"/>
+
+</ruleset>

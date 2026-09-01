@@ -15,7 +15,7 @@
    ```
 2. **Build and Run with Docker Compose:**
    This will build the Java application Docker image and start the PostgreSQL database along with the application.
-   ```sh 
+   ```sh
     docker-compose up -d
    ```
 
@@ -27,7 +27,7 @@
 
 5. **Stopping the Application:**
    To stop the application and remove the containers, use:
-   ```sh 
+   ```sh
     docker-compose down
    ```
 
