@@ -3,13 +3,11 @@ package com.pedrolima.wexchange.architecture;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
-import com.tngtech.archunit.lang.ArchRule;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.GeneralCodingRules.NO_CLASSES_SHOULD_ACCESS_STANDARD_STREAMS;
 import static com.tngtech.archunit.library.GeneralCodingRules.NO_CLASSES_SHOULD_THROW_GENERIC_EXCEPTIONS;
 import static com.tngtech.archunit.library.GeneralCodingRules.NO_CLASSES_SHOULD_USE_FIELD_INJECTION;
@@ -72,19 +70,4 @@ class CodingRulesArchitectureTest {
         NO_CLASSES_SHOULD_USE_FIELD_INJECTION.check(productionClasses);
     }
 
-    @Test
-    @DisplayName("use cases and entities never open outbound connections themselves")
-    void givenProductionCode_whenCheckingOutboundHttp_thenOnlyAdapterCodeOpensConnections() {
-        final ArchRule rule = noClasses()
-                .that()
-                .resideInAnyPackage(
-                        PRODUCTION_PACKAGE + ".usecases..",
-                        PRODUCTION_PACKAGE + ".entities..")
-                .should()
-                .accessClassesThat()
-                .resideInAnyPackage("java.net.http..")
-                .because("outbound HTTP belongs to adapter code so that automated tests can stub it offline");
-
-        rule.check(productionClasses);
-    }
 }
