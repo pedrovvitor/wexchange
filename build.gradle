@@ -114,6 +114,9 @@ dependencies {
     implementation 'io.micrometer:micrometer-core'
     implementation 'io.micrometer:micrometer-registry-prometheus'
 
+    // Validates the committed OpenAPI document (docs/openapi/wexchange-v1.yaml).
+    testImplementation 'io.swagger.parser.v3:swagger-parser:2.1.19'
+
     testImplementation platform('org.junit:junit-bom:5.9.1')
     testImplementation 'org.junit.jupiter:junit-jupiter'
 

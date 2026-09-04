@@ -62,9 +62,13 @@ subquery scoped wrong is invisible to a mocked repository. `@DataJpaTest`
 against an embedded H2 database exercises the real query. Point it at
 `Main` explicitly with `@ContextConfiguration(classes = Main.class)`:
 `@DataJpaTest`'s configuration search only walks up ancestor packages, and
-`Main` sits in a sibling package (`bootstrap`) to the adapters under test. Add
-`@EntityScan`/`@EnableJpaRepositories` with `basePackageClasses` rather than
-relying on package-based scanning to resolve correctly through that override.
+`Main` sits in a sibling package (`bootstrap`) to the adapters under test.
+
+Do not add your own `@EntityScan`/`@EnableJpaRepositories` on top of that -
+`Main` already declares both (see the class-level Javadoc there for why
+`scanBasePackages` alone is not enough), and duplicating them here re-registers
+the same repository beans and fails the context with
+`BeanDefinitionOverrideException`.
 
 Override `spring.datasource.*` explicitly via `@TestPropertySource` rather than
 selecting a profile: the base `application.yml` references
@@ -208,6 +212,37 @@ Mutation report at `build/reports/pitest/index.html`.
 ```
 
 Fix formatting in place.
+
+### OpenAPI specification
+
+`docs/openapi/wexchange-v1.yaml` is committed and versioned. `OpenApiSpecTest`
+(fast, offline, no context boot) validates it against the OpenAPI 3 schema with
+`swagger-parser` and cross-checks its paths against `PurchaseApi`'s and
+`CountryCurrencyApi`'s `@RequestMapping` annotations by reflection - if either
+drifts from the other, that test fails.
+
+Regenerating it requires a running instance, because the document is produced
+by introspecting the live Spring MVC mappings. There is no committed Gradle task
+for this: it is infrequent enough that automating it would be more machinery
+than the job is worth. After changing a route:
+
+```bash
+docker run -d --name wexchange-openapi-gen -e POSTGRES_PASSWORD=genpass \
+  -e POSTGRES_DB=wexchange -p 15432:5432 postgres:16-alpine
+docker cp db-scripts/schema.sql wexchange-openapi-gen:/tmp/schema.sql
+docker exec wexchange-openapi-gen psql -U postgres -d wexchange -f /tmp/schema.sql
+
+./gradlew bootRun --args='--spring.datasource.url=jdbc:postgresql://localhost:15432/wexchange \
+  --spring.datasource.username=postgres --spring.datasource.password=genpass'
+
+curl http://localhost:8080/v3/api-docs.yaml -o docs/openapi/wexchange-v1.yaml
+
+docker stop wexchange-openapi-gen && docker rm wexchange-openapi-gen
+```
+
+Then edit the `servers` entry back to `http://localhost:8080` (the live run
+reports whatever port it actually bound), and run `OpenApiSpecTest` to confirm
+the result validates and matches the routes.
 
 ### Toolchain
 
