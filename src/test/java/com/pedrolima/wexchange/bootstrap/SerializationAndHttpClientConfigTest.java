@@ -1,7 +1,8 @@
 package com.pedrolima.wexchange.bootstrap;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.pedrolima.wexchange.adapter.out.fiscal.CountryCurrencyInput;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
+import com.pedrolima.wexchange.adapter.in.web.CreatePurchaseApiInput;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -9,34 +10,39 @@ import java.net.http.HttpClient;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * These beans are configuration, but their settings are behaviour: rejecting
- * unknown upstream properties would break every Fiscal Data response the moment
- * the provider adds a field, and losing JSR-310 support would break date
- * binding. Both are asserted against the bean the container actually receives.
+ * These beans are configuration, but their settings are behaviour.
+ *
+ * <p>{@link ObjectMapperConfig} is the public-facing mapper, wired into Spring
+ * MVC: it is strict, rejecting fields a client sends that the API does not
+ * model, because that boundary carries untrusted input. The Fiscal Data
+ * upstream adapter parses with its own, separate, deliberately tolerant mapper
+ * in {@code adapter.out.fiscal.JsonUtils} - see {@code JsonUtilsTest} for that
+ * side. The two mappers have opposite trust levels and opposite policies for
+ * exactly that reason; there is no single "shared" mapper.
  */
 class SerializationAndHttpClientConfigTest {
 
     @Test
-    @DisplayName("the shared ObjectMapper tolerates new upstream properties")
-    void givenConfiguredMapper_whenUnknownPropertyArrives_thenItIsIgnored() throws Exception {
+    @DisplayName("the public ObjectMapper rejects a field the API does not model")
+    void givenConfiguredMapper_whenUnknownFieldArrives_thenItIsRejected() {
         final var mapper = new ObjectMapperConfig().objectMapper();
 
-        assertFalse(mapper.isEnabled(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES));
+        assertTrue(mapper.isEnabled(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES));
 
-        final var parsed = mapper.readValue(
-                "{\"country_currency_desc\":\"Brazil-Real\",\"country\":\"Brazil\","
-                        + "\"currency\":\"Real\",\"added_later\":true}",
-                CountryCurrencyInput.class);
-
-        assertEquals("Brazil-Real", parsed.countryCurrency());
+        assertThrows(UnrecognizedPropertyException.class, () -> mapper.readValue(
+                """
+                {"description":"A valid description","date":"2024-01-31","amount":10.00,"unexpected":true}
+                """,
+                CreatePurchaseApiInput.class));
     }
 
     @Test
-    @DisplayName("the shared ObjectMapper understands java.time types")
+    @DisplayName("the public ObjectMapper understands java.time types")
     void givenConfiguredMapper_whenReadingIsoDate_thenJsr310ModuleIsRegistered() throws Exception {
         final var mapper = new ObjectMapperConfig().objectMapper();
 

@@ -11,12 +11,33 @@
       "item": [
         {
           "name": "Create Purchase",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"purchase was created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set(\"purchaseId\", body.id);",
+                  "",
+                  "const location = pm.response.headers.get(\"Location\");",
+                  "pm.test(\"Location resolves to the canonical purchase resource\", function () {",
+                  "    pm.expect(location).to.include(`/v1/purchases/${body.id}`);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"description\" : \"Test description\",\n    \"date\"  : \"2023-11-16\",\n    \"amount\" : 152.557\n}",
+              "raw": "{\n    \"description\" : \"Test description\",\n    \"date\"  : \"2023-11-16\",\n    \"amount\" : 152.55\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -37,19 +58,64 @@
           "response": []
         },
         {
-          "name": "Convert Purchase",
+          "name": "Get Purchase",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"the purchase created above is found\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "localhost:8080/v1/purchases/88defd5c-3896-473c-a31a-5bee828db989/convert?country_currency=Brazil",
+              "raw": "localhost:8080/v1/purchases/{{purchaseId}}",
               "host": [
                 "localhost:8080"
               ],
               "path": [
                 "v1",
                 "purchases",
-                "88defd5c-3896-473c-a31a-5bee828db989",
+                "{{purchaseId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Convert Purchase",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"the purchase created above is converted\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "localhost:8080/v1/purchases/{{purchaseId}}/convert?country_currency=Brazil",
+              "host": [
+                "localhost:8080"
+              ],
+              "path": [
+                "v1",
+                "purchases",
+                "{{purchaseId}}",
                 "convert"
               ],
               "query": [
@@ -114,6 +180,13 @@
           "response": []
         }
       ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "purchaseId",
+      "value": "",
+      "description": "Set by the Create Purchase request's test script. Run the Purchases folder in order, or run Create Purchase once before Get/Convert."
     }
   ]
 }

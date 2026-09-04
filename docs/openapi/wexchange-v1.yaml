@@ -1,0 +1,357 @@
+openapi: 3.0.1
+info:
+  title: Wexchange API
+  description: Currency quotation and purchase-conversion API.
+  version: v1
+servers:
+- url: http://localhost:8080
+  description: Local development server
+paths:
+  /v1/purchases:
+    post:
+      tags:
+      - Purchases
+      summary: Create a new purchase
+      description: Creates a new purchase record with the given details.
+      operationId: createPurchase
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePurchaseApiInput'
+        required: true
+      responses:
+        "201":
+          description: Created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseApiOutput'
+        "415":
+          description: Unsupported content type
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        "400":
+          description: Invalid input field
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+  /v1/purchases/{id}:
+    get:
+      tags:
+      - Purchases
+      summary: Retrieve a purchase
+      description: Returns a previously recorded purchase.
+      operationId: getPurchase
+      parameters:
+      - name: id
+        in: path
+        description: "The purchase identifier, a UUID."
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "400":
+          description: The identifier is not a valid UUID
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        "200":
+          description: The purchase was found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseApiOutput'
+        "404":
+          description: No purchase exists for the given id
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+  /v1/purchases/{id}/convert:
+    get:
+      tags:
+      - Purchases
+      summary: Convert a purchase to a given country-currency
+      operationId: convertPurchase
+      parameters:
+      - name: id
+        in: path
+        description: "The purchase identifier, a UUID."
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: country_currency
+        in: query
+        description: "The country-currency to convert to, e.g. 'Brazil-Real'."
+        required: true
+        schema:
+          type: string
+      responses:
+        "400":
+          description: Invalid identifier or country-currency parameter
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        "503":
+          description: The upstream rate provider is unavailable
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        "200":
+          description: Purchase conversion was successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConvertPurchaseApiOutput'
+        "409":
+          description: The country-currency term is ambiguous
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        "404":
+          description: Purchase or exchange rate not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+  /v1/country_currencies:
+    get:
+      tags:
+      - Country currencies
+      summary: Retrieve all country currencies available in fiscal_service
+      description: |2
+            This endpoint retrieves a paginated list of all country currencies available in the fiscal service.
+            It supports pagination to handle large datasets efficiently. Users can optionally filter the results
+            by specifying a 'country_currency' parameter, which will return only those currencies that contain the
+            provided string, ignoring case.
+      operationId: findByCountryCurrency
+      parameters:
+      - name: pageable
+        in: query
+        description: |2
+              Pagination and sorting configuration for the request. Allows control over which page of data is retrieved and how it is sorted.
+              - 'page': the page number starting from 0 (e.g., page=0 for the first page).
+              - 'size': the number of records per page (e.g., size=10 for ten records per page).
+              - 'sort': the sorting criteria in the format 'propertyName,asc|desc' (e.g., sort=name,asc for ascending order by 'name').
+              Use multiple 'sort' parameters for sorting by multiple properties (e.g., sort=name,asc&sort=id,desc).
+        required: true
+        schema:
+          $ref: '#/components/schemas/Pageable'
+      - name: country_currency
+        in: query
+        description: |2
+              Optional filter parameter. When specified, the service will return only those country currencies that
+              contain the provided string, case-insensitively. Leave blank to retrieve all available country currencies.
+        required: false
+        schema:
+          type: string
+      responses:
+        "500":
+          description: "An internal server error was thrown, indicating an unexpected\
+            \ condition encountered in the server."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountryCurrencyOutput'
+        "200":
+          description: |2
+                List of country currencies successfully retrieved. The response includes paginated country currency
+                data along with related links for further actions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountryCurrencyOutput'
+components:
+  schemas:
+    CreatePurchaseApiInput:
+      required:
+      - amount
+      - date
+      - description
+      type: object
+      properties:
+        description:
+          maxLength: 50
+          minLength: 3
+          type: string
+        date:
+          type: string
+          format: date
+        amount:
+          minimum: 0.00
+          exclusiveMinimum: false
+          type: number
+      description: "Purchase details: description, date, and amount."
+    ProblemDetail:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+        properties:
+          type: object
+          additionalProperties:
+            type: object
+    ApiLink:
+      type: object
+      properties:
+        rel:
+          type: string
+        href:
+          type: string
+        method:
+          type: string
+        params:
+          type: object
+          additionalProperties:
+            type: string
+    PurchaseApiOutput:
+      type: object
+      properties:
+        id:
+          type: string
+        description:
+          type: string
+        date:
+          type: string
+        amount:
+          type: number
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiLink'
+    ConvertPurchaseApiOutput:
+      type: object
+      properties:
+        id:
+          type: string
+        description:
+          type: string
+        transactionDate:
+          type: string
+        conversionCountryCurrency:
+          type: string
+        originalAmount:
+          type: number
+        rateValue:
+          type: number
+        rateEffectiveDate:
+          type: string
+        convertedAmount:
+          type: number
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiLink'
+    Pageable:
+      type: object
+      properties:
+        page:
+          minimum: 0
+          type: integer
+          format: int32
+        size:
+          minimum: 1
+          type: integer
+          format: int32
+        sort:
+          type: array
+          items:
+            type: string
+    CountryCurrency:
+      type: object
+      properties:
+        countryCurrency:
+          type: string
+        country:
+          type: string
+        currency:
+          type: string
+    CountryCurrencyOutput:
+      type: object
+      properties:
+        countryCurrencies:
+          $ref: '#/components/schemas/PageCountryCurrency'
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiLink'
+    PageCountryCurrency:
+      type: object
+      properties:
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/CountryCurrency'
+        number:
+          type: integer
+          format: int32
+        sort:
+          $ref: '#/components/schemas/SortObject'
+        first:
+          type: boolean
+        pageable:
+          $ref: '#/components/schemas/PageableObject'
+        last:
+          type: boolean
+        numberOfElements:
+          type: integer
+          format: int32
+        empty:
+          type: boolean
+    PageableObject:
+      type: object
+      properties:
+        offset:
+          type: integer
+          format: int64
+        sort:
+          $ref: '#/components/schemas/SortObject'
+        paged:
+          type: boolean
+        pageNumber:
+          type: integer
+          format: int32
+        unpaged:
+          type: boolean
+        pageSize:
+          type: integer
+          format: int32
+    SortObject:
+      type: object
+      properties:
+        empty:
+          type: boolean
+        sorted:
+          type: boolean
+        unsorted:
+          type: boolean

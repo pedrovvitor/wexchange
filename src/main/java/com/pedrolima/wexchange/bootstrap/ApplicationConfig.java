@@ -4,6 +4,8 @@ import com.pedrolima.wexchange.application.ConvertPurchaseService;
 import com.pedrolima.wexchange.application.ConvertPurchaseUseCase;
 import com.pedrolima.wexchange.application.CreatePurchaseService;
 import com.pedrolima.wexchange.application.CreatePurchaseUseCase;
+import com.pedrolima.wexchange.application.GetPurchaseService;
+import com.pedrolima.wexchange.application.GetPurchaseUseCase;
 import com.pedrolima.wexchange.application.port.ExchangeRateRefresher;
 import com.pedrolima.wexchange.application.port.ExchangeRateStore;
 import com.pedrolima.wexchange.application.port.IdentifierGenerator;
@@ -41,5 +43,10 @@ public class ApplicationConfig {
             final ExchangeRateRefresher rateRefresher
     ) {
         return new ConvertPurchaseService(purchases, rates, rateRefresher);
+    }
+
+    @Bean
+    public GetPurchaseUseCase getPurchaseUseCase(final PurchaseStore purchases) {
+        return new GetPurchaseService(purchases);
     }
 }
