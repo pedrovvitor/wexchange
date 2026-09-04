@@ -18,6 +18,14 @@ public interface FiscalDataClient {
     /** Exchange rates whose effective date falls within the given window. */
     List<ExchangeRateQuote> fetchExchangeRates(ConversionWindow window);
 
+    /**
+     * Exchange rates for exactly one country-currency within the given
+     * window (issue #4) - bounded, so a conversion request's synchronous
+     * cache-miss load-through never pulls every currency the provider
+     * publishes just to answer for the one the caller asked about.
+     */
+    List<ExchangeRateQuote> fetchExchangeRates(String exactCountryCurrency, ConversionWindow window);
+
     /** Every country-currency the provider currently publishes. */
     List<CountryCurrencyRecord> fetchCountryCurrencies();
 }
