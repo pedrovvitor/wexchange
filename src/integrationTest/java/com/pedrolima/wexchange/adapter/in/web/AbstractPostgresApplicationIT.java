@@ -16,7 +16,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
  * singleton pattern, same as {@code AbstractPostgresRepositoryIT}.
  */
 @SpringBootTest(classes = Main.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-abstract class AbstractPostgresApplicationIT {
+public abstract class AbstractPostgresApplicationIT {
 
     private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
 

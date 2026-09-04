@@ -13,6 +13,11 @@ server:
   undertow:
     threads:
       worker: 64 #Generally this should be reasonably high, at least 10 per CPU core: https://undertow.io/undertow-docs/undertow-docs-2.1.0/index.html#listeners-2
+    # Defense-in-depth backstop behind AbuseControlInterceptor's own, cleaner
+    # 413 (issue #17): a request without a Content-Length header (chunked
+    # transfer-encoding) skips that check, so the container itself also caps
+    # the body it will ever buffer. Matches app.abuse-control.max-request-body-bytes.
+    max-http-post-request-size: 16384
 #      io: 4 # One ID thread per CPU core is a reasonable default: https://undertow.io/undertow-docs/undertow-docs-2.1.0/index.html#listeners-2
 spring:
   lifecycle:
@@ -71,6 +76,43 @@ fiscal:
       wait-duration-in-open-state: 30s
       permitted-calls-in-half-open-state: 5
 app:
+  abuse-control:
+    # Anonymous-abuse baseline (issue #17): all values configurable per
+    # deployment, none of them a universal production truth. Client identity
+    # is the raw remote address - see AbuseControlInterceptor's own Javadoc
+    # for why no forwarded header is honoured while server.forward-headers-strategy
+    # stays "none".
+    rate-limit-enabled: true
+    global:
+      capacity: 20
+      refill-tokens: 100
+      refill-period: 1m
+    purchase-creation:
+      capacity: 3
+      refill-tokens: 10
+      refill-period: 1m
+    conversion:
+      capacity: 5
+      refill-tokens: 30
+      refill-period: 1m
+    country-currencies:
+      capacity: 10
+      refill-tokens: 60
+      refill-period: 1m
+    max-request-body-bytes: 16384
+    max-page-size: 100
+    max-country-currency-filter-length: 100
+  purchase-retention:
+    # How long an anonymous purchase is kept before a background job deletes
+    # it (issue #17). There is no account to reclaim data for and no
+    # legitimate reason to keep it indefinitely once its conversion window
+    # (six months, see ConversionWindow) has long passed.
+    retention: 90d
+    # ISO-8601, not the "1h"-style shorthand Duration binding elsewhere in this
+    # file also accepts: @Scheduled's own placeholder resolution only falls
+    # back to java.time.Duration.parse for a string it cannot read as a plain
+    # millisecond long, and that parser is ISO-8601-only.
+    cleanup-interval: PT1H
   idempotency:
     # How long a completed or abandoned claim is honored before a repeated
     # Idempotency-Key is treated as a fresh request rather than a replay or a

@@ -8,6 +8,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 
 import java.util.List;
 import java.util.UUID;
@@ -27,8 +29,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * actually prove, namely that the unique constraint on {@code idempotency_key}
  * is what makes concurrent identical requests collapse into exactly one
  * purchase.
+ *
+ * <p>Rate limiting (issue #17) is overridden to be generous: this suite's own
+ * twenty-concurrent-request test would otherwise trip a real 429 on request
+ * volume alone, which is not what it is testing.
  */
 class PurchaseIdempotencyIT extends AbstractPostgresApplicationIT {
+
+    @DynamicPropertySource
+    static void generousRateLimits(final DynamicPropertyRegistry registry) {
+        registry.add("app.abuse-control.global.capacity", () -> "10000");
+        registry.add("app.abuse-control.global.refill-tokens", () -> "10000");
+        registry.add("app.abuse-control.purchase-creation.capacity", () -> "10000");
+        registry.add("app.abuse-control.purchase-creation.refill-tokens", () -> "10000");
+    }
 
     private static final String CREATE_BODY = """
             {"description":"Idempotent purchase","date":"2024-01-31","amount":10.00}
