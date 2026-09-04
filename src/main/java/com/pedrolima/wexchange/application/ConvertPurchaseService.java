@@ -11,14 +11,16 @@ import com.pedrolima.wexchange.domain.purchase.ConvertedPurchase;
 import com.pedrolima.wexchange.domain.purchase.Purchase;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Finds the rate that applies to a purchase and converts it.
  *
- * <p>A search term matching more than one country-currency is rejected rather
- * than resolved arbitrarily: picking one silently would return a plausible
- * figure computed against the wrong currency.
+ * <p>Resolution and rate lookup are two separate questions, asked in order:
+ * first, how many currencies could the search term mean within the purchase's
+ * window; only once that answer is exactly one does a second, exact-match query
+ * find its latest eligible rate. Merging the two into a single query is what
+ * let two overlapping currencies with different latest dates silently collapse
+ * into one match instead of being reported as ambiguous.
  */
 public class ConvertPurchaseService implements ConvertPurchaseUseCase {
 
@@ -49,24 +51,27 @@ public class ConvertPurchaseService implements ConvertPurchaseUseCase {
         final var purchase = purchases.findById(purchaseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Purchase not found for id: " + purchaseId));
 
-        final var matches = findRates(purchase, countryCurrency);
+        final var rate = resolveRate(purchase, countryCurrency);
 
-        if (matches.size() > 1) {
-            throw new MultipleCountryCurrenciesException(describeAmbiguity(countryCurrency, matches));
-        }
-
-        return purchase.convertWith(matches.get(0));
+        return purchase.convertWith(rate);
     }
 
-    private List<ExchangeRate> findRates(final Purchase purchase, final String countryCurrency) {
-        final var matches = rates.findLatestWithin(countryCurrency, purchase.conversionWindow());
+    private ExchangeRate resolveRate(final Purchase purchase, final String countryCurrency) {
+        final var window = purchase.conversionWindow();
+        final var candidates = rates.resolveCandidates(countryCurrency, window);
 
-        if (matches.isEmpty()) {
+        if (candidates.isEmpty()) {
             rateRefresher.refreshFor(purchase);
             throw new ExchangeRateNotFoundException("Exchange rate not found for currency " + countryCurrency);
         }
 
-        return matches;
+        if (candidates.size() > 1) {
+            throw new MultipleCountryCurrenciesException(describeAmbiguity(countryCurrency, candidates));
+        }
+
+        return rates.findLatestExact(candidates.get(0), window)
+                .orElseThrow(() -> new ExchangeRateNotFoundException(
+                        "Exchange rate not found for currency " + countryCurrency));
     }
 
     private static void validate(final String countryCurrency) {
@@ -84,11 +89,8 @@ public class ConvertPurchaseService implements ConvertPurchaseUseCase {
      * without changing the message, and this class must leave no surviving
      * mutant. See docs/engineering/test-taxonomy.md.
      */
-    private static String describeAmbiguity(final String requested, final List<ExchangeRate> matches) {
-        final var matched = matches.stream()
-                .map(ExchangeRate::countryCurrency)
-                .collect(Collectors.joining(", "));
-
-        return matches.size() + " Country currencies found containing " + requested + " it: " + matched;
+    private static String describeAmbiguity(final String requested, final List<String> candidates) {
+        return candidates.size() + " Country currencies found containing " + requested
+                + " it: " + String.join(", ", candidates);
     }
 }
