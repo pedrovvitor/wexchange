@@ -1,5 +1,12 @@
 spring:
   jpa:
     show-sql: false
+springdoc:
+  # Interactive API documentation is a development convenience, not something
+  # a public deployment should expose (issue #16 / ADR 0002).
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
 
 # Twelve Factors Heroku
