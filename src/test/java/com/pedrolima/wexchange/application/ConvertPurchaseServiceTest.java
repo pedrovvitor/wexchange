@@ -1,11 +1,12 @@
 package com.pedrolima.wexchange.application;
 
-import com.pedrolima.wexchange.application.port.ExchangeRateRefresher;
+import com.pedrolima.wexchange.application.port.ExchangeRateLoader;
 import com.pedrolima.wexchange.application.port.ExchangeRateStore;
 import com.pedrolima.wexchange.application.port.PurchaseStore;
 import com.pedrolima.wexchange.domain.error.ExchangeRateNotFoundException;
 import com.pedrolima.wexchange.domain.error.MultipleCountryCurrenciesException;
 import com.pedrolima.wexchange.domain.error.ResourceNotFoundException;
+import com.pedrolima.wexchange.domain.error.RetryableException;
 import com.pedrolima.wexchange.domain.exchange.ConversionWindow;
 import com.pedrolima.wexchange.domain.exchange.ExchangeRate;
 import com.pedrolima.wexchange.domain.money.Money;
@@ -33,7 +34,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -62,13 +65,13 @@ class ConvertPurchaseServiceTest {
     private ExchangeRateStore rates;
 
     @Mock
-    private ExchangeRateRefresher rateRefresher;
+    private ExchangeRateLoader rateLoader;
 
     private ConvertPurchaseService service;
 
     @BeforeEach
     void setUp() {
-        service = new ConvertPurchaseService(purchases, rates, rateRefresher);
+        service = new ConvertPurchaseService(purchases, rates, rateLoader);
     }
 
     private static Purchase aPurchase() {
@@ -128,17 +131,48 @@ class ConvertPurchaseServiceTest {
     }
 
     @Test
-    @DisplayName("no candidate triggers a refresh and reports the gap, without an exact lookup")
-    void givenNoCandidate_whenConverting_thenRefreshIsRequestedAndTheGapReported() {
-        final var purchase = aPurchase();
-        when(purchases.findById(ID)).thenReturn(Optional.of(purchase));
+    @DisplayName("no local candidate loads through synchronously, and a genuinely absent rate is still reported as 404")
+    void givenNoCandidate_whenLoadThroughStillFindsNothing_thenTheGapIsReported() {
+        when(purchases.findById(ID)).thenReturn(Optional.of(aPurchase()));
         when(rates.resolveCandidates(any(), any())).thenReturn(List.of());
 
         final var thrown =
                 assertThrows(ExchangeRateNotFoundException.class, () -> service.execute(ID, "Brazil-Real"));
 
         assertEquals("Exchange rate not found for currency Brazil-Real", thrown.getMessage());
-        verify(rateRefresher).refreshFor(purchase);
+        verify(rateLoader).loadExact("Brazil-Real", aPurchase().conversionWindow());
+        verify(rates, times(2)).resolveCandidates("Brazil-Real", aPurchase().conversionWindow());
+        verify(rates, never()).findLatestExact(anyString(), any());
+    }
+
+    @Test
+    @DisplayName("no local candidate but a valid upstream rate converts on the first request, not a retry")
+    void givenNoCandidate_whenLoadThroughFindsTheRate_thenTheFirstRequestSucceeds() {
+        when(purchases.findById(ID)).thenReturn(Optional.of(aPurchase()));
+        when(rates.resolveCandidates(any(), any()))
+                .thenReturn(List.of())
+                .thenReturn(List.of("Brazil-Real"));
+        when(rates.findLatestExact("Brazil-Real", aPurchase().conversionWindow()))
+                .thenReturn(Optional.of(aRate("Brazil-Real", "5.000")));
+
+        final var converted = service.execute(ID, "Brazil-Real");
+
+        assertEquals(Money.of("750.00"), converted.convertedAmount());
+        verify(rateLoader).loadExact("Brazil-Real", aPurchase().conversionWindow());
+        verify(rates, times(2)).resolveCandidates("Brazil-Real", aPurchase().conversionWindow());
+    }
+
+    @Test
+    @DisplayName("an upstream failure during load-through is a truthful 503, not a false 404")
+    void givenNoCandidate_whenLoadThroughFails_thenTheFailurePropagatesRatherThanBecomingNotFound() {
+        when(purchases.findById(ID)).thenReturn(Optional.of(aPurchase()));
+        when(rates.resolveCandidates(any(), any())).thenReturn(List.of());
+        doThrow(new RetryableException("Fiscal data API is unavailable"))
+                .when(rateLoader).loadExact(anyString(), any());
+
+        assertThrows(RetryableException.class, () -> service.execute(ID, "Brazil-Real"));
+
+        verify(rates, times(1)).resolveCandidates(anyString(), any());
         verify(rates, never()).findLatestExact(anyString(), any());
     }
 

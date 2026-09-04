@@ -41,6 +41,7 @@ import static com.pedrolima.wexchange.adapter.out.fiscal.ApiUrlBuilder.FieldType
 import static com.pedrolima.wexchange.adapter.out.fiscal.ApiUrlBuilder.FieldType.EXCHANGE_RATE;
 import static com.pedrolima.wexchange.adapter.out.fiscal.ApiUrlBuilder.PAGE_SIZE_MAX_VALUE;
 import static com.pedrolima.wexchange.adapter.out.fiscal.ApiUrlBuilder.PageType.SIZE;
+import static com.pedrolima.wexchange.adapter.out.fiscal.ApiUrlBuilder.ParamComparator.EQ;
 import static com.pedrolima.wexchange.adapter.out.fiscal.ApiUrlBuilder.ParamComparator.GTE;
 import static com.pedrolima.wexchange.adapter.out.fiscal.ApiUrlBuilder.ParamComparator.LTE;
 import static com.pedrolima.wexchange.adapter.out.fiscal.ApiUrlBuilder.SortOrder.DESC;
@@ -99,15 +100,29 @@ public class HttpFiscalDataClient implements FiscalDataClient {
 
     @Override
     public List<ExchangeRateQuote> fetchExchangeRates(final ConversionWindow window) {
-        final String firstPageUrl = new ApiUrlBuilder(exchangeApiUrl)
+        return fetchExchangeRates(exchangeRatesUrl(window, null));
+    }
+
+    @Override
+    public List<ExchangeRateQuote> fetchExchangeRates(final String exactCountryCurrency, final ConversionWindow window) {
+        return fetchExchangeRates(exchangeRatesUrl(window, exactCountryCurrency));
+    }
+
+    private String exchangeRatesUrl(final ConversionWindow window, final String exactCountryCurrency) {
+        final ApiUrlBuilder builder = new ApiUrlBuilder(exchangeApiUrl)
                 .addFields(EXCHANGE_RATE, EFFECTIVE_DATE, COUNTRY_CURRENCY)
                 .addFilter(EFFECTIVE_DATE, GTE, window.start().toString())
-                .addFilter(EFFECTIVE_DATE, LTE, window.end().toString())
-                .addSorting(DESC, EFFECTIVE_DATE)
+                .addFilter(EFFECTIVE_DATE, LTE, window.end().toString());
+        if (exactCountryCurrency != null) {
+            builder.addFilter(COUNTRY_CURRENCY, EQ, exactCountryCurrency);
+        }
+        return builder.addSorting(DESC, EFFECTIVE_DATE)
                 .addSorting(DESC, COUNTRY_CURRENCY)
                 .addPagination(SIZE, PAGE_SIZE_MAX_VALUE)
                 .build();
+    }
 
+    private List<ExchangeRateQuote> fetchExchangeRates(final String firstPageUrl) {
         final List<ConversionRate> rows = fetchAllPagesWithDeadline(firstPageUrl, ConversionRate.class);
         final List<ExchangeRateQuote> quotes = new ArrayList<>(rows.size());
         for (final ConversionRate row : rows) {

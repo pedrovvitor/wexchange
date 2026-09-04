@@ -1,6 +1,6 @@
 package com.pedrolima.wexchange.application;
 
-import com.pedrolima.wexchange.application.port.ExchangeRateRefresher;
+import com.pedrolima.wexchange.application.port.ExchangeRateLoader;
 import com.pedrolima.wexchange.application.port.ExchangeRateStore;
 import com.pedrolima.wexchange.application.port.PurchaseStore;
 import com.pedrolima.wexchange.domain.error.ExchangeRateNotFoundException;
@@ -21,6 +21,13 @@ import java.util.List;
  * find its latest eligible rate. Merging the two into a single query is what
  * let two overlapping currencies with different latest dates silently collapse
  * into one match instead of being reported as ambiguous.
+ *
+ * <p>A cache miss loads through synchronously (issue #4) rather than starting
+ * a fire-and-forget refresh and answering {@code 404} before it could ever
+ * finish: a valid upstream rate that was one call away is worth waiting a
+ * bounded amount of time for, and an upstream failure is a truthful
+ * {@link com.pedrolima.wexchange.domain.error.RetryableException}-driven
+ * {@code 503}, not a false {@code 404}.
  */
 public class ConvertPurchaseService implements ConvertPurchaseUseCase {
 
@@ -32,16 +39,16 @@ public class ConvertPurchaseService implements ConvertPurchaseUseCase {
 
     private final ExchangeRateStore rates;
 
-    private final ExchangeRateRefresher rateRefresher;
+    private final ExchangeRateLoader rateLoader;
 
     public ConvertPurchaseService(
             final PurchaseStore purchases,
             final ExchangeRateStore rates,
-            final ExchangeRateRefresher rateRefresher
+            final ExchangeRateLoader rateLoader
     ) {
         this.purchases = purchases;
         this.rates = rates;
-        this.rateRefresher = rateRefresher;
+        this.rateLoader = rateLoader;
     }
 
     @Override
@@ -58,10 +65,14 @@ public class ConvertPurchaseService implements ConvertPurchaseUseCase {
 
     private ExchangeRate resolveRate(final Purchase purchase, final String countryCurrency) {
         final var window = purchase.conversionWindow();
-        final var candidates = rates.resolveCandidates(countryCurrency, window);
+        var candidates = rates.resolveCandidates(countryCurrency, window);
 
         if (candidates.isEmpty()) {
-            rateRefresher.refreshFor(purchase);
+            rateLoader.loadExact(countryCurrency, window);
+            candidates = rates.resolveCandidates(countryCurrency, window);
+        }
+
+        if (candidates.isEmpty()) {
             throw new ExchangeRateNotFoundException("Exchange rate not found for currency " + countryCurrency);
         }
 

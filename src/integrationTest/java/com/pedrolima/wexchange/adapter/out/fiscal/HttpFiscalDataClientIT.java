@@ -79,6 +79,31 @@ class HttpFiscalDataClientIT {
     }
 
     @Test
+    void givenAScopedFetchExchangeRatesCall_whenBuildingTheUpstreamRequest_thenTheQueryAlsoPinsTheExactCurrency()
+            throws IOException {
+        final AtomicInteger requestCount = new AtomicInteger();
+        final AtomicReference<String> observedQuery = new java.util.concurrent.atomic.AtomicReference<>();
+        startServer(exchange -> {
+            requestCount.incrementAndGet();
+            observedQuery.set(exchange.getRequestURI().getQuery());
+            sendJson(exchange, 200, dataEnvelope(""));
+        });
+        final HttpFiscalDataClient client = newClient(defaultProperties());
+
+        client.fetchExchangeRates(
+                "Brazil-Real", new ConversionWindow(LocalDate.of(2024, 1, 15), LocalDate.of(2024, 7, 15)));
+
+        assertEquals(1, requestCount.get());
+        assertEquals(
+                "page[size]=10000"
+                        + "&fields=exchange_rate,effective_date,country_currency_desc"
+                        + "&filter=effective_date:gte:2024-01-15,effective_date:lte:2024-07-15,"
+                        + "country_currency_desc:eq:Brazil-Real"
+                        + "&sort=-effective_date,-country_currency_desc",
+                observedQuery.get());
+    }
+
+    @Test
     void givenAFetchCountryCurrenciesCall_whenBuildingTheUpstreamRequest_thenTheQueryPinsFieldsAndPageSize()
             throws IOException {
         final AtomicReference<String> observedQuery = new java.util.concurrent.atomic.AtomicReference<>();
