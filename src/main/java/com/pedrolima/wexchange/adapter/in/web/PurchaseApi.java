@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -27,22 +29,40 @@ import java.util.UUID;
 @Tag(name = "Purchases")
 public interface PurchaseApi {
 
+    /** Client-supplied idempotency-key format: see docs/adr/0003-purchase-idempotency.md. */
+    String IDEMPOTENCY_KEY_PATTERN = "^[A-Za-z0-9_-]{1,255}$";
+
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create a new purchase",
-            description = "Creates a new purchase record with the given details.")
+            description = "Creates a new purchase record with the given details. Optionally accepts an "
+                    + "Idempotency-Key header (issue #18): repeating the same key with the same body replays "
+                    + "the original response; repeating it with a different body is a conflict.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Created successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid input field",
+            @ApiResponse(responseCode = "201", description = "Created successfully, or replayed from an "
+                    + "earlier identical request carrying the same Idempotency-Key"),
+            @ApiResponse(responseCode = "400", description = "Invalid input field or malformed Idempotency-Key",
+                    content = @Content(mediaType = "application/problem+json",
+                            schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "409", description = "The Idempotency-Key was already used with a "
+                    + "different request body",
                     content = @Content(mediaType = "application/problem+json",
                             schema = @Schema(implementation = ProblemDetail.class))),
             @ApiResponse(responseCode = "415", description = "Unsupported content type",
+                    content = @Content(mediaType = "application/problem+json",
+                            schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "503", description = "A concurrent request with the same Idempotency-Key "
+                    + "is still being processed",
                     content = @Content(mediaType = "application/problem+json",
                             schema = @Schema(implementation = ProblemDetail.class)))
     })
     ResponseEntity<PurchaseApiOutput> createPurchase(
             @Parameter(description = "Purchase details: description, date, and amount.")
-            @RequestBody @Valid CreatePurchaseApiInput input
+            @RequestBody @Valid CreatePurchaseApiInput input,
+            @Parameter(description = "Optional client-generated key making this request safely retryable. "
+                    + "1-255 characters: letters, digits, hyphens, and underscores.")
+            @RequestHeader(name = "Idempotency-Key", required = false)
+            @Pattern(regexp = IDEMPOTENCY_KEY_PATTERN) String idempotencyKey
     );
 
     @GetMapping(value = "{id}", produces = MediaType.APPLICATION_JSON_VALUE)

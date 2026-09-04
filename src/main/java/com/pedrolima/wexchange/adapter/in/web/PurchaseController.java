@@ -42,8 +42,12 @@ public class PurchaseController implements PurchaseApi {
     private final ConvertPurchaseUseCase convertPurchaseUseCase;
 
     @Override
-    public ResponseEntity<PurchaseApiOutput> createPurchase(final CreatePurchaseApiInput input) {
-        final Purchase purchase = createPurchaseUseCase.execute(input.description(), input.date(), input.amount());
+    public ResponseEntity<PurchaseApiOutput> createPurchase(
+            final CreatePurchaseApiInput input,
+            final String idempotencyKey
+    ) {
+        final Purchase purchase = createPurchaseUseCase.execute(
+                input.description(), input.date(), input.amount(), idempotencyKey);
 
         final var output = PurchaseApiOutput.with(purchase, createLinks(purchase.id()));
         final var location = ServletUriComponentsBuilder.fromCurrentRequestUri()

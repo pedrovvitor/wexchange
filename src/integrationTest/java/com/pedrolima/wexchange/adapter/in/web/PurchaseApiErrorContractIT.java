@@ -7,6 +7,7 @@ import com.pedrolima.wexchange.application.ConvertPurchaseUseCase;
 import com.pedrolima.wexchange.application.CreatePurchaseUseCase;
 import com.pedrolima.wexchange.application.GetPurchaseUseCase;
 import com.pedrolima.wexchange.domain.error.ExchangeRateNotFoundException;
+import com.pedrolima.wexchange.domain.error.IdempotencyKeyConflictException;
 import com.pedrolima.wexchange.domain.error.MultipleCountryCurrenciesException;
 import com.pedrolima.wexchange.domain.error.PurchaseConversionException;
 import com.pedrolima.wexchange.domain.error.ResourceNotFoundException;
@@ -101,7 +102,7 @@ class PurchaseApiErrorContractIT {
     @Test
     @DisplayName("a valid purchase request returns 201 with a Location header that resolves to the created resource")
     void givenValidPurchase_whenCreating_then201WithCanonicalLocation() throws Exception {
-        when(createPurchaseUseCase.execute(any(), any(), any())).thenReturn(aPurchase());
+        when(createPurchaseUseCase.execute(any(), any(), any(), any())).thenReturn(aPurchase());
 
         mockMvc.perform(post("/v1/purchases")
                         .contentType("application/json")
@@ -111,6 +112,45 @@ class PurchaseApiErrorContractIT {
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", Matchers.endsWith("/v1/purchases/" + PURCHASE_ID)))
                 .andExpect(jsonPath("$.description").value("A valid description"));
+    }
+
+    @Test
+    @DisplayName("an Idempotency-Key header is forwarded to the use case")
+    void givenAnIdempotencyKeyHeader_whenCreating_thenItIsForwardedToTheUseCase() throws Exception {
+        when(createPurchaseUseCase.execute(any(), any(), any(), any())).thenReturn(aPurchase());
+
+        mockMvc.perform(post("/v1/purchases")
+                        .header("Idempotency-Key", "a-client-key")
+                        .contentType("application/json")
+                        .content("""
+                                {"description":"A valid description","date":"2024-01-31","amount":10.00}
+                                """))
+                .andExpect(status().isCreated());
+
+        org.mockito.Mockito.verify(createPurchaseUseCase)
+                .execute("A valid description", LocalDate.of(2024, 1, 31), new BigDecimal("10.00"), "a-client-key");
+    }
+
+    // A malformed Idempotency-Key header depends on the @Validated method-parameter
+    // validation Spring only applies to a real, container-managed bean proxy - not
+    // to a standalone MockMvc controller built with `new`. That case is covered
+    // end to end instead, in PurchaseIdempotencyIT against the real application.
+
+    @Test
+    @DisplayName("reusing an Idempotency-Key with a different request returns 409")
+    void givenAReusedIdempotencyKeyWithADifferentRequest_whenCreating_then409Problem() throws Exception {
+        when(createPurchaseUseCase.execute(any(), any(), any(), any()))
+                .thenThrow(new IdempotencyKeyConflictException(
+                        "Idempotency-Key a-client-key was already used with a different request"));
+
+        mockMvc.perform(post("/v1/purchases")
+                        .header("Idempotency-Key", "a-client-key")
+                        .contentType("application/json")
+                        .content("""
+                                {"description":"A valid description","date":"2024-01-31","amount":10.00}
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("idempotency-key-conflict"));
     }
 
     @Test

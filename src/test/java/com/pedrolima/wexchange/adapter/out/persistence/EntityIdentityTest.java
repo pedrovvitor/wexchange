@@ -121,6 +121,53 @@ class EntityIdentityTest {
     }
 
     @Nested
+    @DisplayName("idempotency-key identity")
+    class IdempotencyKeyIdentity {
+
+        @Test
+        @DisplayName("is defined by the key alone, not by fingerprint or status")
+        void givenSameKey_whenComparing_thenRecordsAreEqual() {
+            final var first = IdempotencyKeyJpaEntity.newClaim(
+                    "a-key", "fingerprint-a", A_FIXED_INSTANT, A_FIXED_INSTANT.plusSeconds(60));
+            final var second = IdempotencyKeyJpaEntity.newClaim(
+                    "a-key", "fingerprint-b", A_FIXED_INSTANT.plusSeconds(1), A_FIXED_INSTANT.plusSeconds(120));
+
+            assertEquals(first, second);
+            assertEquals(first.hashCode(), second.hashCode());
+        }
+
+        @Test
+        @DisplayName("a record equals itself")
+        void givenSameInstance_whenComparing_thenItIsEqual() {
+            final var record = IdempotencyKeyJpaEntity.newClaim(
+                    "a-key", "fingerprint", A_FIXED_INSTANT, A_FIXED_INSTANT.plusSeconds(60));
+
+            assertEquals(record, record);
+        }
+
+        @Test
+        @DisplayName("different keys are different records")
+        void givenDifferentKeys_whenComparing_thenRecordsDiffer() {
+            final var first = IdempotencyKeyJpaEntity.newClaim(
+                    "key-1", "fingerprint", A_FIXED_INSTANT, A_FIXED_INSTANT.plusSeconds(60));
+            final var second = IdempotencyKeyJpaEntity.newClaim(
+                    "key-2", "fingerprint", A_FIXED_INSTANT, A_FIXED_INSTANT.plusSeconds(60));
+
+            assertNotEquals(first, second);
+        }
+
+        @Test
+        @DisplayName("is never equal to null or to an unrelated type")
+        void givenForeignValue_whenComparing_thenNotEqual() {
+            final var record = IdempotencyKeyJpaEntity.newClaim(
+                    "a-key", "fingerprint", A_FIXED_INSTANT, A_FIXED_INSTANT.plusSeconds(60));
+
+            assertFalse(record.equals(null));
+            assertFalse(record.equals("a-key"));
+        }
+    }
+
+    @Nested
     @DisplayName("exchange-rate composite key")
     class ExchangeRateKey {
 

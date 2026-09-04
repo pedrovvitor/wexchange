@@ -1,6 +1,7 @@
 package com.pedrolima.wexchange.adapter.in.web;
 
 import com.pedrolima.wexchange.domain.error.ExchangeRateNotFoundException;
+import com.pedrolima.wexchange.domain.error.IdempotencyKeyConflictException;
 import com.pedrolima.wexchange.domain.error.MultipleCountryCurrenciesException;
 import com.pedrolima.wexchange.domain.error.PurchaseConversionException;
 import com.pedrolima.wexchange.domain.error.ResourceNotFoundException;
@@ -62,6 +63,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             final WebRequest request
     ) {
         return problem(HttpStatus.CONFLICT, "ambiguous-country-currency", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(IdempotencyKeyConflictException.class)
+    public ProblemDetail handleIdempotencyKeyConflict(
+            final IdempotencyKeyConflictException ex,
+            final WebRequest request
+    ) {
+        return problem(HttpStatus.CONFLICT, "idempotency-key-conflict", ex.getMessage(), request);
     }
 
     @ExceptionHandler(RetryableException.class)
