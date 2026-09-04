@@ -34,6 +34,12 @@ public abstract class AbstractPostgresApplicationIT {
         // calls in production. Nothing on this port is listening, so they fail
         // fast locally instead of this suite reaching the public internet.
         registry.add("fiscal.service.api.endpoint", () -> "http://127.0.0.1:1/");
+        // Disables the country-currency scheduled sync bean entirely (issue
+        // #6's @ConditionalOnProperty, not just a no-op cron) - relying on its
+        // "0 0 2 * * *" cron simply not matching during a short test run would
+        // make "the sync never fires in tests" a matter of luck, not a
+        // guarantee.
+        registry.add("app.country-currency-sync.enabled", () -> "false");
     }
 
     @LocalServerPort
