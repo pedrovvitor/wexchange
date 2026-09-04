@@ -3,7 +3,9 @@ package com.pedrolima.wexchange.adapter.in.web;
 import com.pedrolima.wexchange.domain.error.ExchangeRateNotFoundException;
 import com.pedrolima.wexchange.domain.error.IdempotencyKeyConflictException;
 import com.pedrolima.wexchange.domain.error.MultipleCountryCurrenciesException;
+import com.pedrolima.wexchange.domain.error.PayloadTooLargeException;
 import com.pedrolima.wexchange.domain.error.PurchaseConversionException;
+import com.pedrolima.wexchange.domain.error.RateLimitExceededException;
 import com.pedrolima.wexchange.domain.error.ResourceNotFoundException;
 import com.pedrolima.wexchange.domain.error.RetryableException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -76,6 +78,22 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(RetryableException.class)
     public ProblemDetail handleUpstreamUnavailable(final RetryableException ex, final WebRequest request) {
         return problem(HttpStatus.SERVICE_UNAVAILABLE, "upstream-unavailable", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ProblemDetail> handleRateLimitExceeded(
+            final RateLimitExceededException ex,
+            final WebRequest request
+    ) {
+        final var problemDetail = problem(HttpStatus.TOO_MANY_REQUESTS, "rate-limit-exceeded", ex.getMessage(), request);
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.retryAfterSeconds()))
+                .body(problemDetail);
+    }
+
+    @ExceptionHandler(PayloadTooLargeException.class)
+    public ProblemDetail handlePayloadTooLarge(final PayloadTooLargeException ex, final WebRequest request) {
+        return problem(HttpStatus.PAYLOAD_TOO_LARGE, "payload-too-large", ex.getMessage(), request);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
