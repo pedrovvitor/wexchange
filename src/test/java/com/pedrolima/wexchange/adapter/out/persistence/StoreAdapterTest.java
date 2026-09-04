@@ -93,29 +93,50 @@ class StoreAdapterTest {
     }
 
     @Test
-    @DisplayName("the window is unpacked into the repository's date range")
-    void givenWindow_whenFindingRates_thenItsBoundsAreUsed() {
+    @DisplayName("resolution unpacks the window into the repository's date range")
+    void givenWindow_whenResolvingCandidates_thenItsBoundsAreUsed() {
         final var window = ConversionWindow.endingOn(DATE);
-        when(exchangeRateRepository.findLatestRatesByCountryCurrencyAndDateRange(
-                "Brazil-Real", window.start(), window.end()))
-                .thenReturn(List.of(ExchangeRateJpaEntity.newConversionRate(
-                        "Brazil-Real", LocalDate.of(2024, 7, 1), new BigDecimal("5.000"))));
+        when(exchangeRateRepository.findDistinctCountryCurrenciesInRange(
+                "Real", window.start(), window.end()))
+                .thenReturn(List.of("Brazil-Real", "Iran-Real"));
 
-        final var found = rates.findLatestWithin("Brazil-Real", window);
-
-        assertEquals(1, found.size());
-        assertEquals("Brazil-Real", found.get(0).countryCurrency());
-        assertEquals(new BigDecimal("5.000"), found.get(0).rateValue());
-        assertEquals(LocalDate.of(2024, 7, 1), found.get(0).effectiveDate());
+        assertEquals(List.of("Brazil-Real", "Iran-Real"), rates.resolveCandidates("Real", window));
     }
 
     @Test
-    @DisplayName("no matching rows yield an empty list, not null")
-    void givenNoRows_whenFindingRates_thenTheListIsEmpty() {
+    @DisplayName("no matching currency resolves to an empty list, not null")
+    void givenNoMatch_whenResolvingCandidates_thenTheListIsEmpty() {
         final var window = ConversionWindow.endingOn(DATE);
-        when(exchangeRateRepository.findLatestRatesByCountryCurrencyAndDateRange(any(), any(), any()))
+        when(exchangeRateRepository.findDistinctCountryCurrenciesInRange(any(), any(), any()))
                 .thenReturn(List.of());
 
-        assertTrue(rates.findLatestWithin("Brazil-Real", window).isEmpty());
+        assertTrue(rates.resolveCandidates("Real", window).isEmpty());
+    }
+
+    @Test
+    @DisplayName("the exact lookup translates the found row into a domain rate")
+    void givenExactCurrency_whenFindingLatest_thenADomainRateIsReturned() {
+        final var window = ConversionWindow.endingOn(DATE);
+        when(exchangeRateRepository.findLatestExactCountryCurrencyInRange(
+                "Brazil-Real", window.start(), window.end()))
+                .thenReturn(Optional.of(ExchangeRateJpaEntity.newConversionRate(
+                        "Brazil-Real", LocalDate.of(2024, 7, 1), new BigDecimal("5.000"))));
+
+        final var found = rates.findLatestExact("Brazil-Real", window);
+
+        assertTrue(found.isPresent());
+        assertEquals("Brazil-Real", found.get().countryCurrency());
+        assertEquals(new BigDecimal("5.000"), found.get().rateValue());
+        assertEquals(LocalDate.of(2024, 7, 1), found.get().effectiveDate());
+    }
+
+    @Test
+    @DisplayName("no exact row is an empty optional, not a null rate")
+    void givenNoExactRow_whenFindingLatest_thenTheResultIsEmpty() {
+        final var window = ConversionWindow.endingOn(DATE);
+        when(exchangeRateRepository.findLatestExactCountryCurrencyInRange(any(), any(), any()))
+                .thenReturn(Optional.empty());
+
+        assertTrue(rates.findLatestExact("Brazil-Real", window).isEmpty());
     }
 }

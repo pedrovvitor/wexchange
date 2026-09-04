@@ -6,6 +6,7 @@ import com.pedrolima.wexchange.domain.exchange.ExchangeRate;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 
 /** Backs {@link ExchangeRateStore} with Spring Data, translating at the boundary. */
 @Component
@@ -18,11 +19,14 @@ public class ExchangeRateStoreAdapter implements ExchangeRateStore {
     }
 
     @Override
-    public List<ExchangeRate> findLatestWithin(final String countryCurrency, final ConversionWindow window) {
+    public List<String> resolveCandidates(final String countryCurrency, final ConversionWindow window) {
+        return repository.findDistinctCountryCurrenciesInRange(countryCurrency, window.start(), window.end());
+    }
+
+    @Override
+    public Optional<ExchangeRate> findLatestExact(final String countryCurrency, final ConversionWindow window) {
         return repository
-                .findLatestRatesByCountryCurrencyAndDateRange(countryCurrency, window.start(), window.end())
-                .stream()
-                .map(ExchangeRateJpaEntity::toDomain)
-                .toList();
+                .findLatestExactCountryCurrencyInRange(countryCurrency, window.start(), window.end())
+                .map(ExchangeRateJpaEntity::toDomain);
     }
 }

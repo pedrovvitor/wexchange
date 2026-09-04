@@ -40,6 +40,11 @@ import static org.mockito.Mockito.when;
 /**
  * Rate selection is a critical financial rule, so this class is a
  * mutation-testing target alongside the domain value types.
+ *
+ * <p>Resolution ({@code resolveCandidates}) and rate lookup ({@code findLatestExact})
+ * are mocked as two separate steps because that separation is the fix for issue
+ * #2: ambiguity is decided purely by how many distinct currencies match the
+ * term, never by which one happens to have the most recent rate.
  */
 @ExtendWith(MockitoExtension.class)
 class ConvertPurchaseServiceTest {
@@ -75,10 +80,12 @@ class ConvertPurchaseServiceTest {
     }
 
     @Test
-    @DisplayName("converts at the rate found for the purchase's window")
-    void givenSingleRate_whenConverting_thenPurchaseIsConverted() {
+    @DisplayName("converts at the rate found for the resolved currency")
+    void givenSingleCandidate_whenConverting_thenPurchaseIsConverted() {
         when(purchases.findById(ID)).thenReturn(Optional.of(aPurchase()));
-        when(rates.findLatestWithin(any(), any())).thenReturn(List.of(aRate("Brazil-Real", "5.000")));
+        when(rates.resolveCandidates(any(), any())).thenReturn(List.of("Brazil-Real"));
+        when(rates.findLatestExact("Brazil-Real", aPurchase().conversionWindow()))
+                .thenReturn(Optional.of(aRate("Brazil-Real", "5.000")));
 
         final var converted = service.execute(ID, "Brazil-Real");
 
@@ -87,59 +94,79 @@ class ConvertPurchaseServiceTest {
     }
 
     @Test
-    @DisplayName("the rate is looked up within the six months before the purchase")
-    void givenPurchase_whenConverting_thenTheWindowIsTheSixMonthsBefore() {
+    @DisplayName("resolution and the exact lookup both use the six months before the purchase")
+    void givenPurchase_whenConverting_thenBothStepsUseTheSameWindow() {
         when(purchases.findById(ID)).thenReturn(Optional.of(aPurchase()));
-        when(rates.findLatestWithin(any(), any())).thenReturn(List.of(aRate("Brazil-Real", "5.000")));
+        when(rates.resolveCandidates(any(), any())).thenReturn(List.of("Brazil-Real"));
+        when(rates.findLatestExact(any(), any())).thenReturn(Optional.of(aRate("Brazil-Real", "5.000")));
 
         service.execute(ID, "Brazil-Real");
 
-        final var term = ArgumentCaptor.forClass(String.class);
-        final var window = ArgumentCaptor.forClass(ConversionWindow.class);
-        verify(rates).findLatestWithin(term.capture(), window.capture());
+        final var resolveTerm = ArgumentCaptor.forClass(String.class);
+        final var resolveWindow = ArgumentCaptor.forClass(ConversionWindow.class);
+        verify(rates).resolveCandidates(resolveTerm.capture(), resolveWindow.capture());
+        assertEquals("Brazil-Real", resolveTerm.getValue());
+        assertEquals(LocalDate.of(2024, 1, 15), resolveWindow.getValue().start());
+        assertEquals(DATE, resolveWindow.getValue().end());
 
-        assertEquals("Brazil-Real", term.getValue());
-        assertEquals(LocalDate.of(2024, 1, 15), window.getValue().start());
-        assertEquals(DATE, window.getValue().end());
+        final var lookupCurrency = ArgumentCaptor.forClass(String.class);
+        final var lookupWindow = ArgumentCaptor.forClass(ConversionWindow.class);
+        verify(rates).findLatestExact(lookupCurrency.capture(), lookupWindow.capture());
+        assertEquals("Brazil-Real", lookupCurrency.getValue());
+        assertEquals(resolveWindow.getValue(), lookupWindow.getValue());
     }
 
     @Test
-    @DisplayName("an unknown purchase is reported, and no rate is looked up")
+    @DisplayName("an unknown purchase is reported, and nothing is resolved")
     void givenUnknownPurchase_whenConverting_thenItIsReported() {
         when(purchases.findById(ID)).thenReturn(Optional.empty());
 
         final var thrown = assertThrows(ResourceNotFoundException.class, () -> service.execute(ID, "Brazil-Real"));
 
         assertEquals("Purchase not found for id: " + ID, thrown.getMessage());
-        verify(rates, never()).findLatestWithin(anyString(), any());
+        verify(rates, never()).resolveCandidates(anyString(), any());
     }
 
     @Test
-    @DisplayName("no rate in the window triggers a refresh and reports the gap")
-    void givenNoRate_whenConverting_thenRefreshIsRequestedAndTheGapReported() {
+    @DisplayName("no candidate triggers a refresh and reports the gap, without an exact lookup")
+    void givenNoCandidate_whenConverting_thenRefreshIsRequestedAndTheGapReported() {
         final var purchase = aPurchase();
         when(purchases.findById(ID)).thenReturn(Optional.of(purchase));
-        when(rates.findLatestWithin(any(), any())).thenReturn(List.of());
+        when(rates.resolveCandidates(any(), any())).thenReturn(List.of());
 
         final var thrown =
                 assertThrows(ExchangeRateNotFoundException.class, () -> service.execute(ID, "Brazil-Real"));
 
         assertEquals("Exchange rate not found for currency Brazil-Real", thrown.getMessage());
         verify(rateRefresher).refreshFor(purchase);
+        verify(rates, never()).findLatestExact(anyString(), any());
     }
 
     @Test
-    @DisplayName("an ambiguous term is rejected rather than resolved arbitrarily")
-    void givenSeveralMatches_whenConverting_thenAmbiguityIsReported() {
+    @DisplayName("two candidates are rejected as ambiguous, regardless of which has the newer rate")
+    void givenTwoCandidates_whenConverting_thenAmbiguityIsReportedWithoutPickingOne() {
         when(purchases.findById(ID)).thenReturn(Optional.of(aPurchase()));
-        when(rates.findLatestWithin(any(), any()))
-                .thenReturn(List.of(aRate("Brazil-Real", "5.000"), aRate("Iran-Real", "42.000")));
+        when(rates.resolveCandidates(any(), any())).thenReturn(List.of("Brazil-Real", "Iran-Real"));
 
         final var thrown =
                 assertThrows(MultipleCountryCurrenciesException.class, () -> service.execute(ID, "Real"));
 
         // The message reaches the caller verbatim in the 409 body, so it is contract.
         assertEquals("2 Country currencies found containing Real it: Brazil-Real, Iran-Real", thrown.getMessage());
+        verify(rates, never()).findLatestExact(anyString(), any());
+    }
+
+    @Test
+    @DisplayName("a resolved candidate with no rate at lookup time is still a 404, not a 500")
+    void givenCandidateVanishesBeforeLookup_whenConverting_thenItIsReportedAsNotFound() {
+        when(purchases.findById(ID)).thenReturn(Optional.of(aPurchase()));
+        when(rates.resolveCandidates(any(), any())).thenReturn(List.of("Brazil-Real"));
+        when(rates.findLatestExact(any(), any())).thenReturn(Optional.empty());
+
+        final var thrown =
+                assertThrows(ExchangeRateNotFoundException.class, () -> service.execute(ID, "Brazil-Real"));
+
+        assertEquals("Exchange rate not found for currency Brazil-Real", thrown.getMessage());
     }
 
     @ParameterizedTest
@@ -158,7 +185,8 @@ class ConvertPurchaseServiceTest {
     void givenTermAtTheLengthBoundary_whenConverting_thenItIsAccepted(final int length) {
         final var term = "C".repeat(length);
         when(purchases.findById(ID)).thenReturn(Optional.of(aPurchase()));
-        when(rates.findLatestWithin(any(), any())).thenReturn(List.of(aRate(term, "2.000")));
+        when(rates.resolveCandidates(any(), any())).thenReturn(List.of(term));
+        when(rates.findLatestExact(any(), any())).thenReturn(Optional.of(aRate(term, "2.000")));
 
         assertEquals(term, service.execute(ID, term).rate().countryCurrency());
     }

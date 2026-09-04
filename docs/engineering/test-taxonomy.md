@@ -14,7 +14,7 @@ a number drift and the weaker one wins.
 | Suite | Source set | Gradle task | What belongs here |
 | --- | --- | --- | --- |
 | Unit | `src/test/java` | `unitTest` (alias for `test`) | One class or one rule, collaborators stubbed, no Spring context. |
-| Integration | `src/integrationTest/java` | `integrationTest` | Several real components together: controller plus validation plus JSON plus error mapping; later, PostgreSQL through Testcontainers (#5) and stubbed provider HTTP (#3). |
+| Integration | `src/integrationTest/java` | `integrationTest` | Several real components together: controller plus validation plus JSON plus error mapping; repository queries against an embedded H2 database via `@DataJpaTest`; later, PostgreSQL through Testcontainers (#5) and stubbed provider HTTP (#3). |
 | Architecture | `src/architectureTest/java` | `architectureTest` | ArchUnit fitness functions over compiled production and test classes, plus the boundary fixtures below. |
 
 `unitTest` is a lifecycle alias rather than a second `Test` task, so the suite is
@@ -54,6 +54,31 @@ The architecture suite reads the other suites' compiled output, so it depends on
   Assert the constraint annotation that fired instead - it is stable, and it is
   the stronger claim.
 - Country-currency fixtures use synthetic values. No production data, ever.
+
+### Repository-level tests
+
+Some defects live in the generated SQL, not in application logic — a JPQL
+subquery scoped wrong is invisible to a mocked repository. `@DataJpaTest`
+against an embedded H2 database exercises the real query. Point it at
+`Main` explicitly with `@ContextConfiguration(classes = Main.class)`:
+`@DataJpaTest`'s configuration search only walks up ancestor packages, and
+`Main` sits in a sibling package (`bootstrap`) to the adapters under test. Add
+`@EntityScan`/`@EnableJpaRepositories` with `basePackageClasses` rather than
+relying on package-based scanning to resolve correctly through that override.
+
+Override `spring.datasource.*` explicitly via `@TestPropertySource` rather than
+selecting a profile: the base `application.yml` references
+`${DATABASE_POSTGRES_URL}`, which has no default and is unresolved outside a
+real deployment. A higher-precedence property source for the same key is
+resolved directly and never touches that placeholder.
+
+`ExchangeRateRepositoryIT` (issue #2) is the first of these. It is H2-backed,
+not PostgreSQL: Testcontainers and Flyway are issue #5's scope. This is a known,
+tracked gap, not silently accepted — issue #2 asked for PostgreSQL integration
+tests specifically because the defect was a SQL scoping bug, and H2 and
+PostgreSQL do not guarantee identical JPQL-to-SQL translation or collation
+behaviour. Re-run `ExchangeRateRepositoryIT`'s assertions against real
+PostgreSQL once #5 lands.
 
 ### Boundary fixtures
 
