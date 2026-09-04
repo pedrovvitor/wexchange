@@ -18,9 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>These are not ceremonial equals/hashCode tests. {@link ExchangeRateCompositeKey}
  * is a JPA {@code @IdClass}: Hibernate uses its equality to decide whether two
- * rows are the same record, and the exchange-rate deduplication in
- * {@code ExchangeRateService} relies on the entity's identity contract. A broken
- * comparison here shows up as duplicated or silently discarded rates.
+ * rows are the same record. A broken comparison here shows up as duplicated or
+ * silently discarded rates.
  */
 class EntityIdentityTest {
 
@@ -164,6 +163,39 @@ class EntityIdentityTest {
 
             assertFalse(record.equals(null));
             assertFalse(record.equals("a-key"));
+        }
+    }
+
+    @Nested
+    @DisplayName("country-currency sync run identity")
+    class CountryCurrencySyncRunIdentity {
+
+        @Test
+        @DisplayName("is always the same singleton record, regardless of status or timestamps")
+        void givenTwoRunsWithDifferentDetails_whenComparing_thenTheyAreEqual() {
+            final var first = CountryCurrencySyncRunJpaEntity.running(A_FIXED_INSTANT, java.util.Optional.empty());
+            final var second = CountryCurrencySyncRunJpaEntity.succeeded(
+                    A_FIXED_INSTANT, A_FIXED_INSTANT.plusSeconds(5), java.util.Optional.empty());
+
+            assertEquals(first, second);
+            assertEquals(first.hashCode(), second.hashCode());
+        }
+
+        @Test
+        @DisplayName("a run equals itself")
+        void givenSameInstance_whenComparing_thenItIsEqual() {
+            final var run = CountryCurrencySyncRunJpaEntity.running(A_FIXED_INSTANT, java.util.Optional.empty());
+
+            assertEquals(run, run);
+        }
+
+        @Test
+        @DisplayName("is never equal to null or to an unrelated type")
+        void givenForeignValue_whenComparing_thenNotEqual() {
+            final var run = CountryCurrencySyncRunJpaEntity.running(A_FIXED_INSTANT, java.util.Optional.empty());
+
+            assertFalse(run.equals(null));
+            assertFalse(run.equals("singleton"));
         }
     }
 

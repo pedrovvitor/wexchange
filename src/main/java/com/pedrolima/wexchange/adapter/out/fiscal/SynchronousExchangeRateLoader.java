@@ -1,6 +1,6 @@
 package com.pedrolima.wexchange.adapter.out.fiscal;
 
-import com.pedrolima.wexchange.adapter.out.persistence.ExchangeRateRepository;
+import com.pedrolima.wexchange.adapter.out.persistence.ExchangeRateUpsertRepository;
 import com.pedrolima.wexchange.application.port.ExchangeRateLoader;
 import com.pedrolima.wexchange.application.port.FiscalDataClient;
 import com.pedrolima.wexchange.domain.exchange.ConversionWindow;
@@ -33,16 +33,16 @@ import java.util.concurrent.Executors;
 public class SynchronousExchangeRateLoader implements ExchangeRateLoader {
 
     private final FiscalDataClient fiscalDataClient;
-    private final ExchangeRateRepository exchangeRateRepository;
+    private final ExchangeRateUpsertRepository exchangeRateUpsertRepository;
     private final ExecutorService executor;
     private final ConcurrentMap<String, CompletableFuture<Void>> inFlight = new ConcurrentHashMap<>();
 
     public SynchronousExchangeRateLoader(
             final FiscalDataClient fiscalDataClient,
-            final ExchangeRateRepository exchangeRateRepository
+            final ExchangeRateUpsertRepository exchangeRateUpsertRepository
     ) {
         this.fiscalDataClient = fiscalDataClient;
-        this.exchangeRateRepository = exchangeRateRepository;
+        this.exchangeRateUpsertRepository = exchangeRateUpsertRepository;
         this.executor = Executors.newCachedThreadPool(SynchronousExchangeRateLoader::newLoaderThread);
     }
 
@@ -63,7 +63,7 @@ public class SynchronousExchangeRateLoader implements ExchangeRateLoader {
         return CompletableFuture.runAsync(() -> {
             try {
                 final var quotes = fiscalDataClient.fetchExchangeRates(countryCurrency, window);
-                ExchangeRatePersistence.persistNew(quotes, exchangeRateRepository);
+                exchangeRateUpsertRepository.upsertAll(quotes);
             } finally {
                 inFlight.remove(key);
             }

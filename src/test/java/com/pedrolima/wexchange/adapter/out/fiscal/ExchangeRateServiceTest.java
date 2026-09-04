@@ -1,7 +1,6 @@
 package com.pedrolima.wexchange.adapter.out.fiscal;
 
-import com.pedrolima.wexchange.adapter.out.persistence.ExchangeRateJpaEntity;
-import com.pedrolima.wexchange.adapter.out.persistence.ExchangeRateRepository;
+import com.pedrolima.wexchange.adapter.out.persistence.ExchangeRateUpsertRepository;
 import com.pedrolima.wexchange.application.port.ExchangeRateQuote;
 import com.pedrolima.wexchange.application.port.FiscalDataClient;
 import com.pedrolima.wexchange.domain.exchange.ConversionWindow;
@@ -21,7 +20,6 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -30,8 +28,11 @@ import static org.mockito.Mockito.when;
 /**
  * Fetching, retry, circuit-breaker, bulkhead, and deadline behaviour all moved
  * to {@link HttpFiscalDataClient} (issue #3); its dedicated test suite covers
- * that. What remains here is this service's own job: turn quotes the client
- * already fetched and validated into deduplicated, genuinely-new rows.
+ * that. Deduplication and existence-checking are gone too (issue #6): a bulk
+ * {@code ON CONFLICT} upsert makes both the DB's problem, not this service's -
+ * see {@link ExchangeRateUpsertRepository}'s own tests for that behaviour.
+ * What remains here is this service's own job: fetch for the purchase's exact
+ * window and hand the result to the upsert repository unchanged.
  */
 @ExtendWith(MockitoExtension.class)
 class ExchangeRateServiceTest {
@@ -44,7 +45,7 @@ class ExchangeRateServiceTest {
     private FiscalDataClient fiscalDataClient;
 
     @Mock
-    private ExchangeRateRepository exchangeRateRepository;
+    private ExchangeRateUpsertRepository exchangeRateUpsertRepository;
 
     private ExchangeRateService exchangeRateService;
 
@@ -55,26 +56,20 @@ class ExchangeRateServiceTest {
 
     @BeforeEach
     void setUp() {
-        exchangeRateService = new ExchangeRateService(fiscalDataClient, exchangeRateRepository);
+        exchangeRateService = new ExchangeRateService(fiscalDataClient, exchangeRateUpsertRepository);
     }
 
     @Test
-    void givenNewQuotes_whenRefreshing_thenTheyArePersisted() {
+    void givenFetchedQuotes_whenRefreshing_thenTheyAreUpsertedUnchanged() {
         final var purchase = aPurchase();
         final var quote = new ExchangeRateQuote("Brazil-Real", LocalDate.of(2023, 10, 30), new BigDecimal("5.22"));
         when(fiscalDataClient.fetchExchangeRates(any(ConversionWindow.class))).thenReturn(List.of(quote));
-        when(exchangeRateRepository.notExistsByCountryCurrencyAndEffectiveDate("Brazil-Real", quote.effectiveDate()))
-                .thenReturn(true);
 
         exchangeRateService.refreshFor(purchase);
 
-        final var saved = ArgumentCaptor.forClass(List.class);
-        verify(exchangeRateRepository).saveAll(saved.capture());
-        Assertions.assertEquals(1, saved.getValue().size());
-        final var stored = (ExchangeRateJpaEntity) saved.getValue().get(0);
-        Assertions.assertEquals("Brazil-Real", stored.getCountryCurrency());
-        Assertions.assertEquals(LocalDate.of(2023, 10, 30), stored.getEffectiveDate());
-        Assertions.assertEquals(new BigDecimal("5.22"), stored.getRateValue());
+        final var upserted = ArgumentCaptor.forClass(List.class);
+        verify(exchangeRateUpsertRepository).upsertAll(upserted.capture());
+        Assertions.assertEquals(List.of(quote), upserted.getValue());
     }
 
     @Test
@@ -90,35 +85,13 @@ class ExchangeRateServiceTest {
     }
 
     @Test
-    void givenAlreadyStoredQuote_whenRefreshing_thenNothingIsSaved() {
+    void givenNoQuotesFetched_whenRefreshing_thenAnEmptyUpsertIsStillDelegated() {
         final var purchase = aPurchase();
-        final var quote = new ExchangeRateQuote("Brazil-Real", LocalDate.of(2023, 10, 30), new BigDecimal("5.22"));
-        when(fiscalDataClient.fetchExchangeRates(any(ConversionWindow.class))).thenReturn(List.of(quote));
-        when(exchangeRateRepository.notExistsByCountryCurrencyAndEffectiveDate(anyString(), any(LocalDate.class)))
-                .thenReturn(false);
+        when(fiscalDataClient.fetchExchangeRates(any(ConversionWindow.class))).thenReturn(List.of());
 
         exchangeRateService.refreshFor(purchase);
 
-        verify(exchangeRateRepository, never()).saveAll(any());
-    }
-
-    @Test
-    void givenDuplicateCountryCurrencyInTheSameBatch_whenRefreshing_thenOnlyTheFirstIsKept() {
-        final var purchase = aPurchase();
-        final var effectiveDate = LocalDate.of(2023, 10, 30);
-        final var first = new ExchangeRateQuote("Brazil-Real", effectiveDate, new BigDecimal("5.22"));
-        final var second = new ExchangeRateQuote("Brazil-Real", effectiveDate, new BigDecimal("9.99"));
-        when(fiscalDataClient.fetchExchangeRates(any(ConversionWindow.class))).thenReturn(List.of(first, second));
-        when(exchangeRateRepository.notExistsByCountryCurrencyAndEffectiveDate("Brazil-Real", effectiveDate))
-                .thenReturn(true);
-
-        exchangeRateService.refreshFor(purchase);
-
-        final var saved = ArgumentCaptor.forClass(List.class);
-        verify(exchangeRateRepository).saveAll(saved.capture());
-        Assertions.assertEquals(1, saved.getValue().size());
-        final var kept = (ExchangeRateJpaEntity) saved.getValue().get(0);
-        Assertions.assertEquals(new BigDecimal("5.22"), kept.getRateValue());
+        verify(exchangeRateUpsertRepository, times(1)).upsertAll(List.of());
     }
 
     @Test
@@ -132,6 +105,6 @@ class ExchangeRateServiceTest {
                 () -> exchangeRateService.refreshFor(purchase));
 
         verify(fiscalDataClient, times(1)).fetchExchangeRates(any(ConversionWindow.class));
-        verify(exchangeRateRepository, never()).saveAll(any());
+        verify(exchangeRateUpsertRepository, never()).upsertAll(any());
     }
 }

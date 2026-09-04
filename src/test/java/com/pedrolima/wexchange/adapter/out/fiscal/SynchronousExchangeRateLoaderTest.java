@@ -1,6 +1,6 @@
 package com.pedrolima.wexchange.adapter.out.fiscal;
 
-import com.pedrolima.wexchange.adapter.out.persistence.ExchangeRateRepository;
+import com.pedrolima.wexchange.adapter.out.persistence.ExchangeRateUpsertRepository;
 import com.pedrolima.wexchange.application.port.ExchangeRateQuote;
 import com.pedrolima.wexchange.application.port.FiscalDataClient;
 import com.pedrolima.wexchange.domain.error.RetryableException;
@@ -23,17 +23,14 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * {@link ExchangeRatePersistence}'s persistence rules are already covered by
- * {@link ExchangeRateServiceTest}; what is specific to this class (issue #4)
- * is the coalescing and failure-propagation behaviour a conversion request's
+ * {@link ExchangeRateUpsertRepository}'s upsert semantics are already covered
+ * by its own tests; what is specific to this class (issue #4) is the
+ * coalescing and failure-propagation behaviour a conversion request's
  * synchronous cache-miss load-through relies on.
  */
 @ExtendWith(MockitoExtension.class)
@@ -46,13 +43,13 @@ class SynchronousExchangeRateLoaderTest {
     private FiscalDataClient fiscalDataClient;
 
     @Mock
-    private ExchangeRateRepository exchangeRateRepository;
+    private ExchangeRateUpsertRepository exchangeRateUpsertRepository;
 
     private SynchronousExchangeRateLoader loader;
 
     @BeforeEach
     void setUp() {
-        loader = new SynchronousExchangeRateLoader(fiscalDataClient, exchangeRateRepository);
+        loader = new SynchronousExchangeRateLoader(fiscalDataClient, exchangeRateUpsertRepository);
     }
 
     @AfterEach
@@ -61,27 +58,13 @@ class SynchronousExchangeRateLoaderTest {
     }
 
     @Test
-    void givenANewRate_whenLoading_thenItIsPersisted() {
+    void givenAFetchedRate_whenLoading_thenItIsUpsertedUnchanged() {
         final var quote = new ExchangeRateQuote("Brazil-Real", LocalDate.of(2024, 6, 1), new BigDecimal("5.22"));
         when(fiscalDataClient.fetchExchangeRates("Brazil-Real", WINDOW)).thenReturn(List.of(quote));
-        when(exchangeRateRepository.notExistsByCountryCurrencyAndEffectiveDate("Brazil-Real", quote.effectiveDate()))
-                .thenReturn(true);
 
         loader.loadExact("Brazil-Real", WINDOW);
 
-        verify(exchangeRateRepository).saveAll(any());
-    }
-
-    @Test
-    void givenAnAlreadyStoredRate_whenLoading_thenNothingIsSaved() {
-        final var quote = new ExchangeRateQuote("Brazil-Real", LocalDate.of(2024, 6, 1), new BigDecimal("5.22"));
-        when(fiscalDataClient.fetchExchangeRates("Brazil-Real", WINDOW)).thenReturn(List.of(quote));
-        when(exchangeRateRepository.notExistsByCountryCurrencyAndEffectiveDate(anyString(), any()))
-                .thenReturn(false);
-
-        loader.loadExact("Brazil-Real", WINDOW);
-
-        verify(exchangeRateRepository, never()).saveAll(any());
+        verify(exchangeRateUpsertRepository).upsertAll(List.of(quote));
     }
 
     @Test

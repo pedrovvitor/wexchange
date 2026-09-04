@@ -1,6 +1,6 @@
 package com.pedrolima.wexchange.adapter.out.fiscal;
 
-import com.pedrolima.wexchange.adapter.out.persistence.ExchangeRateRepository;
+import com.pedrolima.wexchange.adapter.out.persistence.ExchangeRateUpsertRepository;
 import com.pedrolima.wexchange.application.port.ExchangeRateRefresher;
 import com.pedrolima.wexchange.application.port.FiscalDataClient;
 import com.pedrolima.wexchange.domain.purchase.Purchase;
@@ -16,26 +16,28 @@ import org.springframework.stereotype.Service;
  * This class runs asynchronously and does not retry what the client already
  * gave up on - stacking a second retry policy here would just multiply the
  * client's own bounded retries by however many times this method were called.
+ * Persisting is a single bulk upsert (issue #6): a concurrent refresh for the
+ * exact same window is safe by construction, not by a check this class makes.
  */
 @Service
 @Slf4j
 public class ExchangeRateService implements ExchangeRateRefresher {
 
     private final FiscalDataClient fiscalDataClient;
-    private final ExchangeRateRepository exchangeRateRepository;
+    private final ExchangeRateUpsertRepository exchangeRateUpsertRepository;
 
     public ExchangeRateService(
             final FiscalDataClient fiscalDataClient,
-            final ExchangeRateRepository exchangeRateRepository
+            final ExchangeRateUpsertRepository exchangeRateUpsertRepository
     ) {
         this.fiscalDataClient = fiscalDataClient;
-        this.exchangeRateRepository = exchangeRateRepository;
+        this.exchangeRateUpsertRepository = exchangeRateUpsertRepository;
     }
 
     @Override
     @Async
     public void refreshFor(final Purchase purchase) {
         final var quotes = fiscalDataClient.fetchExchangeRates(purchase.conversionWindow());
-        ExchangeRatePersistence.persistNew(quotes, exchangeRateRepository);
+        exchangeRateUpsertRepository.upsertAll(quotes);
     }
 }

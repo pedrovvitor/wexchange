@@ -76,6 +76,14 @@ fiscal:
       wait-duration-in-open-state: 30s
       permitted-calls-in-half-open-state: 5
 app:
+  country-currency-sync:
+    # Scheduler enablement, cron, and timezone for the country-currency
+    # catalogue sync (issue #6), explicit and overridable per deployment -
+    # tests turn this off entirely rather than let a real scheduled network
+    # call run during every test that boots the application.
+    enabled: true
+    cron: "0 0 2 * * *"
+    zone: "UTC"
   abuse-control:
     # Anonymous-abuse baseline (issue #17): all values configurable per
     # deployment, none of them a universal production truth. Client identity
