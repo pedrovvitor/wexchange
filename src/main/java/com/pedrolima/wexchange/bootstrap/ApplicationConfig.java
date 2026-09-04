@@ -10,7 +10,9 @@ import com.pedrolima.wexchange.application.port.ExchangeRateLoader;
 import com.pedrolima.wexchange.application.port.ExchangeRateRefresher;
 import com.pedrolima.wexchange.application.port.ExchangeRateStore;
 import com.pedrolima.wexchange.application.port.IdentifierGenerator;
+import com.pedrolima.wexchange.application.port.PurchaseIdempotencyStore;
 import com.pedrolima.wexchange.application.port.PurchaseStore;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -25,6 +27,7 @@ import java.time.Clock;
  * {@code new} and no container.
  */
 @Configuration
+@EnableConfigurationProperties(IdempotencyProperties.class)
 public class ApplicationConfig {
 
     @Bean
@@ -32,9 +35,19 @@ public class ApplicationConfig {
             final PurchaseStore purchases,
             final ExchangeRateRefresher rateRefresher,
             final IdentifierGenerator identifiers,
-            final Clock clock
+            final Clock clock,
+            final PurchaseIdempotencyStore idempotencyStore,
+            final IdempotencyProperties idempotencyProperties
     ) {
-        return new CreatePurchaseService(purchases, rateRefresher, identifiers, clock);
+        return new CreatePurchaseService(
+                purchases,
+                rateRefresher,
+                identifiers,
+                clock,
+                idempotencyStore,
+                idempotencyProperties.retention(),
+                idempotencyProperties.maxWait(),
+                idempotencyProperties.pollInterval());
     }
 
     @Bean

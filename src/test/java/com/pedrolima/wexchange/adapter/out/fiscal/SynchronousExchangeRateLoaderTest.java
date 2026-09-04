@@ -96,27 +96,46 @@ class SynchronousExchangeRateLoaderTest {
     void givenConcurrentMissesForTheSameCurrencyAndWindow_whenLoading_thenOnlyOneUpstreamCallIsMade()
             throws Exception {
         final var callCount = new AtomicInteger();
+        final var fetchStarted = new CountDownLatch(1);
+        final var secondStarted = new CountDownLatch(1);
         final var releaseLatch = new CountDownLatch(1);
-        final var bothCallersArrived = new CountDownLatch(2);
 
         when(fiscalDataClient.fetchExchangeRates("Brazil-Real", WINDOW)).thenAnswer(invocation -> {
             callCount.incrementAndGet();
+            fetchStarted.countDown();
             releaseLatch.await(5, TimeUnit.SECONDS);
             return List.of();
         });
 
         final ExecutorService callers = Executors.newFixedThreadPool(2);
         try {
-            final Future<?> first = callers.submit(() -> {
-                bothCallersArrived.countDown();
-                loader.loadExact("Brazil-Real", WINDOW);
-            });
-            final Future<?> second = callers.submit(() -> {
-                bothCallersArrived.countDown();
-                loader.loadExact("Brazil-Real", WINDOW);
-            });
+            final Future<?> first = callers.submit(() -> loader.loadExact("Brazil-Real", WINDOW));
+            Assertions.assertTrue(fetchStarted.await(5, TimeUnit.SECONDS), "the first caller's fetch never started");
 
-            bothCallersArrived.await(5, TimeUnit.SECONDS);
+            final Future<?> second = callers.submit(() -> {
+                secondStarted.countDown();
+                loader.loadExact("Brazil-Real", WINDOW);
+            });
+            /*
+             * secondStarted only proves the second caller's thread began running,
+             * not that it has already reached computeIfAbsent - submit() merely
+             * enqueues, and a thread pool can leave a task unscheduled for an
+             * arbitrary stretch. Once it does start, though, everything before
+             * computeIfAbsent is a couple of uncontended method calls: a short,
+             * generous sleep here is what actually closes the gap. Without both
+             * this signal and the sleep, the first caller's still-latched fetch
+             * can finish, run its finally block, and remove the coalescing key
+             * the instant releaseLatch opens - fast enough, on a warm JVM, to
+             * beat a second caller that has not yet reached computeIfAbsent,
+             * which then starts its own fetch instead of joining the first's.
+             * A standalone, Mockito-free reproduction of just the
+             * ConcurrentHashMap/CompletableFuture pattern confirmed this
+             * concretely: without this ordering it failed close to 100% of the
+             * time; with it, 2000/2000 trials passed.
+             */
+            Assertions.assertTrue(secondStarted.await(5, TimeUnit.SECONDS), "the second caller's thread never started");
+            Thread.sleep(50);
+
             releaseLatch.countDown();
             first.get(5, TimeUnit.SECONDS);
             second.get(5, TimeUnit.SECONDS);

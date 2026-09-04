@@ -70,6 +70,16 @@ fiscal:
       sliding-window-size: 20
       wait-duration-in-open-state: 30s
       permitted-calls-in-half-open-state: 5
+app:
+  idempotency:
+    # How long a completed or abandoned claim is honored before a repeated
+    # Idempotency-Key is treated as a fresh request rather than a replay or a
+    # conflict (issue #18).
+    retention: 24h
+    # How long a request waits for a concurrent, identical request to finish
+    # before it gives up and returns 503 instead of blocking indefinitely.
+    max-wait: 5s
+    poll-interval: 50ms
 management:
   endpoints:
     web:
