@@ -1,6 +1,11 @@
 server:
   port: 8080
   shutdown: graceful # let in-flight requests finish before the container stops
+  # No reverse proxy or load balancer sits in front of this application today
+  # (see ADR 0002), so no forwarded header is trusted: a client cannot spoof
+  # its perceived scheme, host, or address through X-Forwarded-*. Revisit this
+  # only once a real trusted proxy is introduced, together with its IP allowlist.
+  forward-headers-strategy: none
   compression:
     enabled: true #Whether response compression is enabled
     mime-types: text/html, text/xml, text/plain, text/css, text/javascript, application/javascript, application/json #Comma-separated list of MIME types that should be compressed.
@@ -76,3 +81,8 @@ management:
   endpoint:
     health:
       show-details: never # never leak datasource/disk internals to an unauthenticated caller
+# app.cors.allowed-origins is deliberately not declared here: CorsProperties
+# already defaults an absent key to an empty list, and leaving it undeclared
+# means a test or deployment overriding it is the only property source for
+# that key, rather than competing with an explicit [] here for Boot's
+# relaxed-binding precedence on a collection-typed property (issue #16).

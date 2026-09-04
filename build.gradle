@@ -110,6 +110,16 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
     /*
+     * The anonymous API security baseline (issue #16): CORS, safe headers, and
+     * an explicit permit-all authorization decision. No authentication
+     * provider, no login form, no session - defining SecurityConfig's own
+     * SecurityFilterChain bean replaces Spring Boot's auto-configured default
+     * chain entirely, so none of that default (basic auth, a generated
+     * password) ever activates.
+     */
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+
+    /*
      * Schema evolution through a versioned migration history (issue #5),
      * checked against the entities on every startup via
      * spring.jpa.hibernate.ddl-auto=validate. db-scripts/schema.sql is retired
