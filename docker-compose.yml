@@ -35,8 +35,6 @@ services:
     environment:
       POSTGRES_PASSWORD: ${DATABASE_POSTGRES_PASSWORD:?DATABASE_POSTGRES_PASSWORD must be set; copy .env.example to .env first}
       POSTGRES_DB: wexchange
-    volumes:
-      - ./db-scripts:/docker-entrypoint-initdb.d
     ports:
       # Loopback only, never 0.0.0.0: reachable from the host for a local
       # psql/DBeaver session, never from the rest of the network.

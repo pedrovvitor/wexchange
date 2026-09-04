@@ -29,10 +29,6 @@ docs
 .github
 README.md
 
-# Not copied into the image; docker-compose mounts this directly from the
-# host into the postgres container.
-db-scripts
-
 # The Docker files themselves never need to be inside the image they build.
 Dockerfile
 docker-compose*.yml

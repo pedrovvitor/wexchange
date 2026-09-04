@@ -14,7 +14,7 @@ a number drift and the weaker one wins.
 | Suite | Source set | Gradle task | What belongs here |
 | --- | --- | --- | --- |
 | Unit | `src/test/java` | `unitTest` (alias for `test`) | One class or one rule, collaborators stubbed, no Spring context. |
-| Integration | `src/integrationTest/java` | `integrationTest` | Several real components together: controller plus validation plus JSON plus error mapping; repository queries against an embedded H2 database via `@DataJpaTest`; later, PostgreSQL through Testcontainers (#5) and stubbed provider HTTP (#3). |
+| Integration | `src/integrationTest/java` | `integrationTest` | Several real components together: controller plus validation plus JSON plus error mapping; repository queries against real PostgreSQL through Testcontainers (#5) via `@DataJpaTest`; stubbed provider HTTP (#3). |
 | Architecture | `src/architectureTest/java` | `architectureTest` | ArchUnit fitness functions over compiled production and test classes, plus the boundary fixtures below. |
 
 `unitTest` is a lifecycle alias rather than a second `Test` task, so the suite is
@@ -59,7 +59,10 @@ The architecture suite reads the other suites' compiled output, so it depends on
 
 Some defects live in the generated SQL, not in application logic — a JPQL
 subquery scoped wrong is invisible to a mocked repository. `@DataJpaTest`
-against an embedded H2 database exercises the real query. Point it at
+against real PostgreSQL, run through Testcontainers (issue #5), exercises the
+real query against the same engine production uses - H2 does not guarantee
+identical JPQL-to-SQL translation or collation behaviour, which matters
+precisely because issue #2's original defect was a SQL scoping bug. Point it at
 `Main` explicitly with `@ContextConfiguration(classes = Main.class)`:
 `@DataJpaTest`'s configuration search only walks up ancestor packages, and
 `Main` sits in a sibling package (`bootstrap`) to the adapters under test.
@@ -70,19 +73,23 @@ Do not add your own `@EntityScan`/`@EnableJpaRepositories` on top of that -
 the same repository beans and fails the context with
 `BeanDefinitionOverrideException`.
 
-Override `spring.datasource.*` explicitly via `@TestPropertySource` rather than
-selecting a profile: the base `application.yml` references
-`${DATABASE_POSTGRES_URL}`, which has no default and is unresolved outside a
-real deployment. A higher-precedence property source for the same key is
-resolved directly and never touches that placeholder.
+`AbstractPostgresRepositoryIT` starts one `PostgreSQLContainer` in a static
+initializer (the Testcontainers singleton pattern - never stopped explicitly,
+reaped by Testcontainers' own Ryuk process at JVM exit) and points
+`spring.datasource.*` at it via `@DynamicPropertySource`, which every
+repository integration test extends rather than repeating. This is what keeps
+these tests off `${DATABASE_POSTGRES_URL}`, which has no default and is
+unresolved outside a real deployment - `@DynamicPropertySource` resolves a
+higher-precedence value for the same key directly, never touching that
+placeholder.
 
-`ExchangeRateRepositoryIT` (issue #2) is the first of these. It is H2-backed,
-not PostgreSQL: Testcontainers and Flyway are issue #5's scope. This is a known,
-tracked gap, not silently accepted — issue #2 asked for PostgreSQL integration
-tests specifically because the defect was a SQL scoping bug, and H2 and
-PostgreSQL do not guarantee identical JPQL-to-SQL translation or collation
-behaviour. Re-run `ExchangeRateRepositoryIT`'s assertions against real
-PostgreSQL once #5 lands.
+`ExchangeRateRepositoryIT` (issue #2) is the first of these, now backed by that
+shared container. `PersistenceConstraintsIT` covers the primary-key constraints
+Flyway's schema declares (forcing a real `INSERT` past Hibernate's own
+first-level cache via `TestEntityManager.persistAndFlush` plus a session
+`clear()`, since the ORM's identity map would otherwise reject an in-session
+duplicate before it ever reached the database) and the exact decimal scale and
+instant precision round-tripping through PostgreSQL unchanged.
 
 ### Boundary fixtures
 
@@ -151,21 +158,24 @@ gone. It held two `@Value` field injections; issue #1 replaced them with
 constructor injection, so the store emptied and was deleted in the same change.
 That is what the ratchet is for, and what it looks like when it works.
 
-Seventeen mutants survive, none in the critical financial rules:
+A double-digit count of mutants survive, none in the critical financial rules.
+Two categories worth knowing about rather than re-deriving from scratch:
 
-- nine in the persistence entities' `equals`/`hashCode`. `ExchangeRateCompositeKey`
-  is a JPA `@IdClass` with no setters, so a unit test cannot build two keys that
-  differ; three of these are reported as `NO_COVERAGE` for that reason. Issue #5
-  brings Testcontainers, which is where that identity contract can finally be
-  exercised against a real Hibernate session;
-- four in the two `getRetryCount()` helpers, whose value only ever reaches a log
-  message;
-- four `StopWatch::stop` removals. commons-lang3 reports elapsed time on a
-  running watch, and the only consumer of `formatTime()` is a debug log, so
-  nothing observable changes.
+- `ExchangeRateCompositeKey`'s identity contract (`equals`/`hashCode` as a JPA
+  `@IdClass`) was once untestable: it has no setters, so a unit test could not
+  build two keys that differ. Issue #5's Testcontainers suite closed this - it
+  added a small all-args constructor and `PersistenceConstraintsIT` now looks
+  a stored row up by an independently constructed key, exercising the real
+  contract against a real Hibernate session.
+- `StopWatch::stop` removals in the fiscal services were retired as genuinely
+  equivalent mutants rather than left as accepted survivors: commons-lang3
+  reports elapsed time on a still-running watch, so the call had no observable
+  effect and was deleted outright (see `CountryCurrencyUpdaterService`).
 
-They are counted against the score rather than suppressed, and the suite clears
-both thresholds with them included.
+Read `build/reports/pitest/mutations.xml` (or the HTML report alongside it)
+after `./gradlew pitest` for the current exact survivor list - it changes with
+every suite that gains real coverage, and a hardcoded count here would only
+go stale again.
 
 The critical financial rules are held to a stricter standard than a score: every
 mutant PIT generates for them must die, with no exemption list. When a mutant
@@ -229,8 +239,6 @@ than the job is worth. After changing a route:
 ```bash
 docker run -d --name wexchange-openapi-gen -e POSTGRES_PASSWORD=genpass \
   -e POSTGRES_DB=wexchange -p 15432:5432 postgres:16-alpine
-docker cp db-scripts/schema.sql wexchange-openapi-gen:/tmp/schema.sql
-docker exec wexchange-openapi-gen psql -U postgres -d wexchange -f /tmp/schema.sql
 
 ./gradlew bootRun --args='--spring.datasource.url=jdbc:postgresql://localhost:15432/wexchange \
   --spring.datasource.username=postgres --spring.datasource.password=genpass'
@@ -239,6 +247,9 @@ curl http://localhost:8080/v3/api-docs.yaml -o docs/openapi/wexchange-v1.yaml
 
 docker stop wexchange-openapi-gen && docker rm wexchange-openapi-gen
 ```
+
+Flyway applies `src/main/resources/db/migration` on startup, so a bare empty
+container is enough - no manual schema step needed.
 
 Then edit the `servers` entry back to `http://localhost:8080` (the live run
 reports whatever port it actually bound), and run `OpenApiSpecTest` to confirm
