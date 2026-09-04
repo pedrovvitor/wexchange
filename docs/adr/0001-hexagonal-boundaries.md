@@ -100,10 +100,14 @@ allowed by name in the layered rule rather than being hidden, and it buys back a
 paging port, a read model, and a mapper that would exist only to satisfy a
 diagram. Issue #6 owns the scheduled sync and can revisit it with a reason.
 
-The refresh path keeps its `@Async` and `@Retryable` exactly where they were,
-behind the one-method `ExchangeRateRefresher` port. Splitting fetch from store
-into an application-level orchestration would have moved the proxy boundary and
-changed what a retry wraps, for no gain this issue needs.
+The refresh path keeps its `@Async` exactly where it was, behind the one-method
+`ExchangeRateRefresher` port. Splitting fetch from store into an
+application-level orchestration would have moved the proxy boundary for no gain
+this issue needs. `@Retryable` moved on: issue #3 gave the fiscal HTTP call its
+own retry, circuit-breaker, and bulkhead policy inside `FiscalDataClient`, so
+`ExchangeRateRefresher`'s implementation no longer retries anything itself -
+retrying both there and inside the client would have stacked two independent
+policies.
 
 ## Enforcement
 

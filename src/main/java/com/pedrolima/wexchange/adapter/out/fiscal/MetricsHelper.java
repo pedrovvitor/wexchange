@@ -14,36 +14,11 @@ public class MetricsHelper {
 
     private final MeterRegistry meterRegistry;
 
-    public void registryFiscalServiceRetrievalElapsedTime(final long time) {
-        Timer.builder("wexchange.application.fiscal.service.retrieval.time")
-                .publishPercentileHistogram()
-                .register(meterRegistry)
-                .record(Duration.ofNanos(time));
-    }
-
     public void registryUpsertCountryCurrenciesElapsedTime(final long time) {
         Timer.builder("wexchange.application.update..retrieval.time")
                 .publishPercentileHistogram()
                 .register(meterRegistry)
                 .record(Duration.ofNanos(time));
-    }
-
-    public void incrementRequestErrorMetric() {
-        Counter.builder("wexchange.application.integration.fiscal.request.error.count")
-                .register(meterRegistry)
-                .increment();
-    }
-
-    public void incrementSuccessfulRequestMetric() {
-        Counter.builder("wexchange.application.integration.fiscal.request.success.count")
-                .register(meterRegistry)
-                .increment();
-    }
-
-    public void incrementParsingErrorMetric() {
-        Counter.builder("wexchange.application.parsing.error.count")
-                .register(meterRegistry)
-                .increment();
     }
 
     public void incrementUnmappedExceptionMetric() {

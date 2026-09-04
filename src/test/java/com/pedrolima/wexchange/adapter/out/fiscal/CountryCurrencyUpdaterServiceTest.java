@@ -2,78 +2,59 @@ package com.pedrolima.wexchange.adapter.out.fiscal;
 
 import com.pedrolima.wexchange.adapter.out.persistence.CountryCurrencyJpaEntity;
 import com.pedrolima.wexchange.adapter.out.persistence.CountryCurrencyRepository;
+import com.pedrolima.wexchange.application.port.CountryCurrencyRecord;
+import com.pedrolima.wexchange.application.port.FiscalDataClient;
 import com.pedrolima.wexchange.domain.error.RetryableException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
-import org.springframework.retry.context.RetryContextSupport;
-import org.springframework.retry.support.RetrySynchronizationManager;
 
-import java.io.IOException;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.anyLong;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * Fetching, retry, circuit-breaker, bulkhead, and deadline behaviour all moved
+ * to {@link HttpFiscalDataClient} (issue #3); its dedicated test suite covers
+ * that. What remains here is this service's own job: persist genuinely-new
+ * country currencies from what the client already fetched and validated.
+ */
 @ExtendWith(MockitoExtension.class)
-public class CountryCurrencyUpdaterServiceTest {
+class CountryCurrencyUpdaterServiceTest {
 
-    private static final String QUOTE = "\"";
-
-    private static final String API_URL = "http://mocked.api.url";
-
-    private static final String BRAZIL_REAL = "{" + QUOTE + "country_currency_desc" + QUOTE + ":"
-            + QUOTE + "Brazil-Real" + QUOTE + "," + QUOTE + "country" + QUOTE + ":" + QUOTE + "Brazil"
-            + QUOTE + "," + QUOTE + "currency" + QUOTE + ":" + QUOTE + "Real" + QUOTE + "}";
+    private static final CountryCurrencyRecord BRAZIL_REAL =
+            new CountryCurrencyRecord("Brazil-Real", "Brazil", "Real");
 
     @Mock
     private CountryCurrencyRepository repository;
 
     @Mock
-    private MetricsHelper metricsHelper;
+    private FiscalDataClient fiscalDataClient;
 
     @Mock
-    private HttpClient httpClient;
+    private MetricsHelper metricsHelper;
 
     private CountryCurrencyUpdaterService countryCurrencyUpdaterService;
 
-    private HttpResponse<String> response;
-
     @BeforeEach
     void setUp() {
-        response = Mockito.mock(HttpResponse.class);
-        countryCurrencyUpdaterService = new CountryCurrencyUpdaterService(
-                repository, API_URL, metricsHelper, httpClient);
-    }
-
-    /** Wraps country-currency objects in the envelope the Fiscal Data API returns. */
-    private static String countryCurrenciesPayload(final String... entries) {
-        return "{" + QUOTE + "data" + QUOTE + ":[" + String.join(",", entries) + "]}";
+        countryCurrencyUpdaterService = new CountryCurrencyUpdaterService(repository, fiscalDataClient, metricsHelper);
     }
 
     @Test
-    void whenUpdateAllExchangeRates_andApiResponseIsOk_thenSaveCountryCurrencies() throws IOException, InterruptedException {
-        when(response.statusCode()).thenReturn(HttpStatus.OK.value());
-        when(response.body()).thenReturn(countryCurrenciesPayload(BRAZIL_REAL));
-        when(httpClient.send(
-                any(HttpRequest.class),
-                any(HttpResponse.BodyHandlers.ofString().getClass())))
-                .thenReturn(response);
+    void givenANewCountryCurrency_whenSynchronizing_thenItIsSaved() {
+        when(fiscalDataClient.fetchCountryCurrencies()).thenReturn(List.of(BRAZIL_REAL));
         when(repository.notExistsByCountryCurrency("Brazil-Real")).thenReturn(true);
 
         countryCurrencyUpdaterService.synchronizeCountryCurrencies();
@@ -85,107 +66,12 @@ public class CountryCurrencyUpdaterServiceTest {
         assertEquals("Brazil-Real", stored.getCountryCurrency());
         assertEquals("Brazil", stored.getCountry());
         assertEquals("Real", stored.getCurrency());
-        verify(metricsHelper, times(1)).incrementSuccessfulRequestMetric();
-        verify(metricsHelper, never()).incrementParsingErrorMetric();
-        verify(metricsHelper, times(1)).registryFiscalServiceRetrievalElapsedTime(anyLong());
+        verify(metricsHelper, times(1)).registryUpsertCountryCurrenciesElapsedTime(anyLong());
     }
 
     @Test
-    void whenUpdateAllExchangeRates_andApiResponseIsNotOk_thenThrowRetryableException() throws IOException, InterruptedException {
-        when(response.statusCode()).thenReturn(HttpStatus.SERVICE_UNAVAILABLE.value());
-        when(httpClient.send(
-                any(HttpRequest.class),
-                any(HttpResponse.BodyHandlers.ofString().getClass())))
-                .thenReturn(response);
-
-        assertThrows(RetryableException.class, () -> countryCurrencyUpdaterService.synchronizeCountryCurrencies());
-        verify(repository, never()).saveAll(any());
-        verify(metricsHelper, never()).incrementParsingErrorMetric();
-        verify(metricsHelper, times(1)).registryFiscalServiceRetrievalElapsedTime(anyLong());
-    }
-
-    @Test
-    void whenUpdateAllExchangeRates_andIOExceptionOccurs_thenThrowRetryableException() throws IOException, InterruptedException {
-        when(httpClient.send(any(HttpRequest.class), any())).thenThrow(IOException.class);
-
-        assertThrows(RetryableException.class, () -> countryCurrencyUpdaterService.synchronizeCountryCurrencies());
-        verify(repository, never()).saveAll(any());
-        verify(metricsHelper, times(1)).incrementRequestErrorMetric();
-        verify(metricsHelper, never()).incrementParsingErrorMetric();
-    }
-
-    @Test
-    void whenUpdateAllExchangeRates_thenTheUpstreamQueryPinsFieldsAndPageSize()
-            throws IOException, InterruptedException {
-        when(response.statusCode()).thenReturn(HttpStatus.SERVICE_UNAVAILABLE.value());
-        when(httpClient.send(
-                any(HttpRequest.class),
-                any(HttpResponse.BodyHandlers.ofString().getClass())))
-                .thenReturn(response);
-
-        assertThrows(RetryableException.class, () -> countryCurrencyUpdaterService.synchronizeCountryCurrencies());
-
-        final var request = ArgumentCaptor.forClass(HttpRequest.class);
-        verify(httpClient).send(request.capture(), any(HttpResponse.BodyHandlers.ofString().getClass()));
-        assertEquals(
-                "http://mocked.api.url"
-                        + "?page[size]=10000"
-                        + "&fields=country_currency_desc,currency,country",
-                request.getValue().uri().toString());
-    }
-
-    @Test
-    void whenUpdateAllExchangeRates_andPayloadIsMalformed_thenCountItAsAParsingErrorAndRetry()
-            throws IOException, InterruptedException {
-        when(response.statusCode()).thenReturn(HttpStatus.OK.value());
-        when(response.body()).thenReturn("{" + QUOTE + "data" + QUOTE + ":[");
-        when(httpClient.send(
-                any(HttpRequest.class),
-                any(HttpResponse.BodyHandlers.ofString().getClass())))
-                .thenReturn(response);
-
-        final var thrown = assertThrows(RetryableException.class,
-                () -> countryCurrencyUpdaterService.synchronizeCountryCurrencies());
-
-        assertEquals("Error parsing API response", thrown.getMessage());
-        verify(metricsHelper, times(1)).incrementParsingErrorMetric();
-        verify(metricsHelper, never()).incrementRequestErrorMetric();
-        verify(repository, never()).saveAll(any());
-    }
-
-    @Test
-    void whenUpdateAllExchangeRates_andARetryIsAlreadyInProgress_thenTheFailureStillPropagates()
-            throws IOException, InterruptedException {
-        final var retryContext = new RetryContextSupport(null);
-        retryContext.registerThrowable(new RetryableException("previous attempt"));
-        RetrySynchronizationManager.register(retryContext);
-
-        try {
-            when(response.statusCode()).thenReturn(HttpStatus.SERVICE_UNAVAILABLE.value());
-            when(httpClient.send(
-                    any(HttpRequest.class),
-                    any(HttpResponse.BodyHandlers.ofString().getClass())))
-                    .thenReturn(response);
-
-            final var thrown = assertThrows(RetryableException.class,
-                    () -> countryCurrencyUpdaterService.synchronizeCountryCurrencies());
-
-            assertEquals("Unexpected response from API", thrown.getMessage());
-            assertEquals(1, retryContext.getRetryCount());
-        } finally {
-            RetrySynchronizationManager.clear();
-        }
-    }
-
-    @Test
-    void whenUpdateAllExchangeRates_andEveryCountryCurrencyIsKnown_thenNothingNewIsPersisted()
-            throws IOException, InterruptedException {
-        when(response.statusCode()).thenReturn(HttpStatus.OK.value());
-        when(response.body()).thenReturn(countryCurrenciesPayload(BRAZIL_REAL));
-        when(httpClient.send(
-                any(HttpRequest.class),
-                any(HttpResponse.BodyHandlers.ofString().getClass())))
-                .thenReturn(response);
+    void givenAnAlreadyKnownCountryCurrency_whenSynchronizing_thenNothingNewIsPersisted() {
+        when(fiscalDataClient.fetchCountryCurrencies()).thenReturn(List.of(BRAZIL_REAL));
         when(repository.notExistsByCountryCurrency("Brazil-Real")).thenReturn(false);
 
         countryCurrencyUpdaterService.synchronizeCountryCurrencies();
@@ -193,5 +79,15 @@ public class CountryCurrencyUpdaterServiceTest {
         final var saved = ArgumentCaptor.forClass(List.class);
         verify(repository).saveAll(saved.capture());
         assertTrue(saved.getValue().isEmpty());
+    }
+
+    @Test
+    void givenTheClientHasExhaustedItsOwnRetries_whenSynchronizing_thenTheFailurePropagatesWithoutARetryHere() {
+        when(fiscalDataClient.fetchCountryCurrencies())
+                .thenThrow(new RetryableException("Fiscal data API is unavailable"));
+
+        assertThrows(RetryableException.class, () -> countryCurrencyUpdaterService.synchronizeCountryCurrencies());
+
+        verify(repository, never()).saveAll(any());
     }
 }
