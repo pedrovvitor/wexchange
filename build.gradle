@@ -110,6 +110,14 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
     /*
+     * Schema evolution through a versioned migration history (issue #5),
+     * checked against the entities on every startup via
+     * spring.jpa.hibernate.ddl-auto=validate. db-scripts/schema.sql is retired
+     * in the same change: this is the one canonical schema history.
+     */
+    implementation 'org.flywaydb:flyway-core'
+
+    /*
      * The fiscal HTTP client's retry, circuit breaker, bulkhead, and total-deadline
      * policies (issue #3). Core modules only, composed explicitly in
      * HttpFiscalDataClient - no spring-boot3 starter, so the policy stays in one
@@ -136,13 +144,6 @@ dependencies {
     implementation 'org.projectlombok:lombok'
 
     annotationProcessor 'org.projectlombok:lombok'
-
-    /*
-     * H2 backs test-only configuration. It must never reach the production
-     * artifact, so it is scoped to the test runtimes rather than to runtimeOnly.
-     * Issue #5 replaces it with PostgreSQL through Testcontainers.
-     */
-    testRuntimeOnly 'com.h2database:h2'
 }
 
 // ---------------------------------------------------------------------------
@@ -164,6 +165,15 @@ testing {
         integrationTest(JvmTestSuite) {
             dependencies {
                 implementation 'org.springframework.boot:spring-boot-starter-test'
+                /*
+                 * Real PostgreSQL, not H2 (issue #5): repository and API integration
+                 * tests run against the same engine production uses. Versions come
+                 * from Spring Boot's dependency-management BOM, already applied to
+                 * this project, so none is pinned here.
+                 */
+                implementation 'org.springframework.boot:spring-boot-testcontainers'
+                implementation 'org.testcontainers:junit-jupiter'
+                implementation 'org.testcontainers:postgresql'
             }
             targets.all {
                 testTask.configure {
@@ -205,10 +215,6 @@ configurations {
 dependencies {
     integrationTestImplementation sourceSets.main.output
     architectureTestImplementation sourceSets.main.output
-
-    // Declared here rather than beside the other dependencies because the
-    // integrationTest configurations only exist once the suite above is defined.
-    integrationTestRuntimeOnly 'com.h2database:h2'
 }
 
 tasks.named('test') {
@@ -321,6 +327,14 @@ pitest {
      */
     testSourceSets = [sourceSets.test, sourceSets.integrationTest]
     mainSourceSets = [sourceSets.main]
+    /*
+     * Testcontainers (issue #5) pushed integrationTestRuntimeClasspath long
+     * enough that PIT's default classpath handling fails outright on Windows
+     * ("Unable to load class content for org.pitest.boot.HotSwapAgent"). This
+     * is the documented fix for exactly that failure.
+     */
+    useClasspathJar = true
+    useClasspathFile = true
     /*
      * DEFAULTS alone does not mutate inline constants, so the `6` in the
      * conversion window generated no mutant at all and that half of the critical

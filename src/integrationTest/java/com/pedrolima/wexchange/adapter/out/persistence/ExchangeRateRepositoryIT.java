@@ -1,13 +1,9 @@
 package com.pedrolima.wexchange.adapter.out.persistence;
 
-import com.pedrolima.wexchange.bootstrap.Main;
 import com.pedrolima.wexchange.domain.exchange.ConversionWindow;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.TestPropertySource;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -18,28 +14,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Reproduces the ambiguous-match defect from issue #2 directly against Spring
- * Data JPA, because the defect lived in the generated SQL rather than in
- * application logic: a {@code MAX(effectiveDate)} subquery scoped to the whole
- * LIKE-matched set, not to one currency, let two overlapping currencies with
- * different latest dates silently collapse into a single row instead of
- * surfacing as ambiguous.
- *
- * <p>Runs against an embedded H2 database rather than PostgreSQL. Testcontainers
- * and Flyway are issue #5's scope and are not introduced here; the datasource
- * properties below exist only so this test never touches
- * {@code ${DATABASE_POSTGRES_URL}}, which is unresolved outside a real
- * deployment. See docs/engineering/test-taxonomy.md for the tracked gap.
+ * Data JPA and real PostgreSQL (issue #5), because the defect lived in the
+ * generated SQL rather than in application logic: a {@code MAX(effectiveDate)}
+ * subquery scoped to the whole LIKE-matched set, not to one currency, let two
+ * overlapping currencies with different latest dates silently collapse into a
+ * single row instead of surfacing as ambiguous.
  */
-@DataJpaTest
-@ContextConfiguration(classes = Main.class)
-@TestPropertySource(properties = {
-        "spring.datasource.url=jdbc:h2:mem:exchange_rate_repository_it;DB_CLOSE_DELAY=-1",
-        "spring.datasource.username=sa",
-        "spring.datasource.password=",
-        "spring.jpa.hibernate.ddl-auto=create-drop",
-        "spring.jpa.properties.hibernate.connection.provider_disables_autocommit=false",
-})
-class ExchangeRateRepositoryIT {
+class ExchangeRateRepositoryIT extends AbstractPostgresRepositoryIT {
 
     private static final LocalDate PURCHASE_DATE = LocalDate.of(2024, 7, 15);
 

@@ -67,7 +67,6 @@ environment. Selecting a profile is always a deliberate act.
 | --- | --- | --- |
 | `development` | `src/main/resources/application-development.yml` | local runs against a real PostgreSQL |
 | `production` | `src/main/resources/application-production.yml` | the Docker image and any deployment |
-| `test` | `src/test/resources/application-test.yml` | automated tests only; never packaged |
 
 Choose one explicitly:
 
@@ -78,6 +77,40 @@ java -jar build/libs/wexchange-1.0-SNAPSHOT.jar --spring.profiles.active=product
 
 `docker-compose.yml` sets `SPRING_PROFILES_ACTIVE=production`, and the Dockerfile
 carries the same value as its default.
+
+Automated tests never select a profile or need one: `test` and `integrationTest`
+either need no database at all, or start their own PostgreSQL container through
+Testcontainers (see below) and point at it directly.
+
+## Database migrations
+
+Flyway owns the schema. `src/main/resources/db/migration` is the one canonical
+history - `spring.jpa.hibernate.ddl-auto: validate` (`application.yml`) checks
+the JPA entities against whatever Flyway has already applied and refuses to
+start the application on any mismatch, rather than silently creating or
+altering tables.
+
+**Changing the schema:** add a new `V<next-number>__<description>.sql` file to
+that directory. Never edit a migration that has already run anywhere - Flyway
+checksums every applied migration and refuses to start if a committed file no
+longer matches what it recorded, which is deliberate: it is what catches a
+migration silently changing under a deployment that already ran it.
+
+**Resetting a local database:**
+
+```sh
+docker compose down        # schema lives in the postgres container's own
+                            # storage; there is no separate volume to remove
+docker compose up --build --wait
+```
+
+The application applies every migration on startup, so a fresh container
+reaches the current schema with no manual step. To confirm what actually ran:
+
+```sh
+docker exec wexchange_postgres psql -U postgres -d wexchange -c \
+  "SELECT version, description, success FROM flyway_schema_history;"
+```
 
 ## Building and checking
 

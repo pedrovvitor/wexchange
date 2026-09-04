@@ -17,6 +17,11 @@ public class ExchangeRateCompositeKey implements Serializable {
 
     }
 
+    public ExchangeRateCompositeKey(final String countryCurrency, final LocalDate effectiveDate) {
+        this.countryCurrency = countryCurrency;
+        this.effectiveDate = effectiveDate;
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) return true;
