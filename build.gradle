@@ -144,6 +144,11 @@ dependencies {
     implementation 'io.micrometer:micrometer-core'
     implementation 'io.micrometer:micrometer-registry-prometheus'
 
+    // One JSON object per stdout line in the production profile (issue #9) -
+    // container-friendly and directly parseable by any log aggregator,
+    // carrying the MDC traceId set by TraceIdFilter on every field.
+    implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
+
     // Validates the committed OpenAPI document (docs/openapi/wexchange-v1.yaml).
     testImplementation 'io.swagger.parser.v3:swagger-parser:2.1.19'
 

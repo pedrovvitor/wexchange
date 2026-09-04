@@ -15,6 +15,7 @@ import com.pedrolima.wexchange.domain.error.RetryableException;
 import com.pedrolima.wexchange.domain.exchange.ExchangeRate;
 import com.pedrolima.wexchange.domain.money.Money;
 import com.pedrolima.wexchange.domain.purchase.Purchase;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -92,7 +93,7 @@ class PurchaseApiErrorContractIT {
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new PurchaseController(createPurchaseUseCase, getPurchaseUseCase, convertPurchaseUseCase))
                 .addFilters(new TraceIdFilter())
-                .setControllerAdvice(new GlobalExceptionHandler())
+                .setControllerAdvice(new GlobalExceptionHandler(new GlobalExceptionMetrics(new SimpleMeterRegistry())))
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .build();
     }
@@ -400,7 +401,7 @@ class PurchaseApiErrorContractIT {
     void givenNoTraceIdFilter_whenAnErrorOccurs_thenAFreshTraceIdIsStillGenerated() throws Exception {
         final var mockMvcWithoutFilter = MockMvcBuilders
                 .standaloneSetup(new PurchaseController(createPurchaseUseCase, getPurchaseUseCase, convertPurchaseUseCase))
-                .setControllerAdvice(new GlobalExceptionHandler())
+                .setControllerAdvice(new GlobalExceptionHandler(new GlobalExceptionMetrics(new SimpleMeterRegistry())))
                 .build();
         when(getPurchaseUseCase.execute(PURCHASE_ID))
                 .thenThrow(new ResourceNotFoundException("Purchase not found for id: " + PURCHASE_ID));

@@ -134,13 +134,40 @@ management:
   endpoints:
     web:
       exposure:
-        # Only health, and only for the Docker healthcheck / compose startup
-        # ordering below. Metrics exposure and restricting it properly is
-        # issue #9's scope, not this one's.
-        include: health
+        # health for the Docker healthcheck / compose startup ordering;
+        # prometheus for scraping (issue #9). Neither carries its own
+        # authentication - see docs/adr/0006-observability-baseline.md for why
+        # that is an accepted operator responsibility (keep the scrape
+        # endpoint off any public ingress) rather than an application-level
+        # concern, consistent with the anonymous-API trust boundary from
+        # ADR 0002.
+        include: health,prometheus
   endpoint:
     health:
       show-details: never # never leak datasource/disk internals to an unauthenticated caller
+      probes:
+        enabled: true # exposes /actuator/health/liveness and /actuator/health/readiness
+      group:
+        readiness:
+          # The database is a required dependency: nothing works without it.
+          # The fiscal data provider is deliberately excluded - its own
+          # circuit breaker already isolates callers from its failures, and a
+          # struggling upstream must not take this service out of rotation.
+          include: readinessState,db
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+  metrics:
+    tags:
+      # A stable, low-cardinality tag distinguishing this service's series
+      # from any other scraped target - not per-instance (no pod/host id):
+      # that belongs to the scraper's own target labels.
+      application: wexchange
+    distribution:
+      percentiles-histogram:
+        "[http.server.requests]": true
 # app.cors.allowed-origins is deliberately not declared here: CorsProperties
 # already defaults an absent key to an empty list, and leaving it undeclared
 # means a test or deployment overriding it is the only property source for
