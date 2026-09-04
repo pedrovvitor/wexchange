@@ -9,6 +9,7 @@ import com.sun.net.httpserver.HttpServer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -195,6 +196,21 @@ class HttpFiscalDataClientIT {
         final var successTimer = meterRegistry.find("wexchange.application.integration.fiscal.call.duration")
                 .tag("outcome", "success").timer();
         assertTrue(successTimer != null && successTimer.count() > 0, "expected a successful-call duration to be recorded");
+    }
+
+    @Test
+    void givenAClient_whenConstructed_thenItsTotalDeadlineExecutorIsMonitored() throws IOException {
+        startServer(exchange -> sendJson(exchange, 200, dataEnvelope(brazilRealJson())));
+        final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+        final HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(1))
+                .followRedirects(HttpClient.Redirect.NEVER)
+                .build();
+        final String baseUrl = "http://127.0.0.1:" + server.getAddress().getPort() + "/";
+        new HttpFiscalDataClient(httpClient, defaultProperties(), baseUrl, new FiscalClientMetrics(meterRegistry));
+
+        final var poolSize = meterRegistry.find("executor.pool.size").tag("name", "fiscal-client-deadline").gauge();
+        assertTrue(poolSize != null, "expected the total-deadline executor's pool size to be a monitored gauge");
     }
 
     @Test
@@ -667,6 +683,44 @@ class HttpFiscalDataClientIT {
         assertEquals(callers, outcomes.size());
         assertTrue(maxObservedInFlight.get() <= maxConcurrentCalls,
                 "observed " + maxObservedInFlight.get() + " concurrent upstream calls, expected at most " + maxConcurrentCalls);
+    }
+
+    @Test
+    void givenAnInboundTraceIdOnTheCallingThread_whenFetching_thenTheOutboundRequestCarriesAMatchingTraceparent()
+            throws IOException {
+        final AtomicReference<String> observedTraceparent = new AtomicReference<>();
+        startServer(exchange -> {
+            observedTraceparent.set(exchange.getRequestHeaders().getFirst("traceparent"));
+            sendJson(exchange, 200, dataEnvelope(brazilRealJson()));
+        });
+        final HttpFiscalDataClient client = newClient(defaultProperties());
+
+        MDC.put("traceId", "0123456789abcdef0123456789abcdef");
+        try {
+            client.fetchCountryCurrencies();
+        } finally {
+            MDC.remove("traceId");
+        }
+
+        final String traceparent = observedTraceparent.get();
+        assertTrue(traceparent != null && traceparent.matches("00-0123456789abcdef0123456789abcdef-[0-9a-f]{16}-01"),
+                "expected a valid traceparent carrying the calling thread's trace id, got: " + traceparent);
+    }
+
+    @Test
+    void givenNoTraceIdOnTheCallingThread_whenFetching_thenNoTraceparentHeaderIsSent() throws IOException {
+        final AtomicReference<String> observedTraceparent = new AtomicReference<>();
+        final AtomicBoolean headerWasPresent = new AtomicBoolean(false);
+        startServer(exchange -> {
+            headerWasPresent.set(exchange.getRequestHeaders().containsKey("traceparent"));
+            observedTraceparent.set(exchange.getRequestHeaders().getFirst("traceparent"));
+            sendJson(exchange, 200, dataEnvelope(brazilRealJson()));
+        });
+        final HttpFiscalDataClient client = newClient(defaultProperties());
+
+        client.fetchCountryCurrencies();
+
+        assertTrue(!headerWasPresent.get(), "expected no traceparent header, got: " + observedTraceparent.get());
     }
 
     // ---------------------------------------------------------------------

@@ -2,6 +2,7 @@ package com.pedrolima.wexchange.adapter.in.web;
 
 import com.pedrolima.wexchange.domain.error.PayloadTooLargeException;
 import com.pedrolima.wexchange.domain.error.RateLimitExceededException;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Path;
@@ -31,7 +32,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("a constraint violation is reported as a 400 problem listing every violated field")
     void givenConstraintViolation_whenHandling_thenViolationsAreReported() {
-        final var handler = new GlobalExceptionHandler();
+        final var handler = new GlobalExceptionHandler(new GlobalExceptionMetrics(new SimpleMeterRegistry()));
         final var request = new ServletWebRequest(new MockHttpServletRequest("GET", "/v1/purchases/1/convert"));
 
         @SuppressWarnings("unchecked")
@@ -54,7 +55,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("a rate-limit rejection is reported as 429 carrying a Retry-After header")
     void givenRateLimitExceeded_whenHandling_then429WithRetryAfter() {
-        final var handler = new GlobalExceptionHandler();
+        final var handler = new GlobalExceptionHandler(new GlobalExceptionMetrics(new SimpleMeterRegistry()));
         final var request = new ServletWebRequest(new MockHttpServletRequest("POST", "/v1/purchases"));
 
         final var response = handler.handleRateLimitExceeded(
@@ -69,7 +70,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("an oversized payload is reported as 413")
     void givenPayloadTooLarge_whenHandling_then413() {
-        final var handler = new GlobalExceptionHandler();
+        final var handler = new GlobalExceptionHandler(new GlobalExceptionMetrics(new SimpleMeterRegistry()));
         final var request = new ServletWebRequest(new MockHttpServletRequest("POST", "/v1/purchases"));
 
         final var problemDetail = handler.handlePayloadTooLarge(
@@ -77,5 +78,19 @@ class GlobalExceptionHandlerTest {
 
         assertEquals(413, problemDetail.getStatus());
         assertEquals("payload-too-large", problemDetail.getProperties().get("code"));
+    }
+
+    @Test
+    @DisplayName("an unclassified failure is reported as a sanitized 500 and increments the unmapped-error metric")
+    void givenAnUnclassifiedFailure_whenHandling_then500AndTheMetricIsIncremented() {
+        final var meterRegistry = new SimpleMeterRegistry();
+        final var handler = new GlobalExceptionHandler(new GlobalExceptionMetrics(meterRegistry));
+        final var request = new ServletWebRequest(new MockHttpServletRequest("GET", "/v1/purchases/1"));
+
+        final var problemDetail = handler.handleUnexpected(new IllegalStateException("boom"), request);
+
+        assertEquals(500, problemDetail.getStatus());
+        assertEquals("internal-error", problemDetail.getProperties().get("code"));
+        assertEquals(1.0, meterRegistry.counter("wexchange.application.web.unmapped_error.count").count());
     }
 }
