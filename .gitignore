@@ -1,6 +1,12 @@
 .gradle
 build/
 logs/
+
+### Local secrets ###
+# Real credentials never get committed; .env.example documents the shape.
+.env
+.env.*
+!.env.example
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/

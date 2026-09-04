@@ -8,28 +8,53 @@
 
 ### Steps:
 
-1. **Clone the Repository:**
+1. **Clone the repository:**
    ```sh
    git clone https://github.com/pedrovvitor/wexchange
    cd wexchange
    ```
-2. **Build and Run with Docker Compose:**
-   This will build the Java application Docker image and start the PostgreSQL database along with the application.
+2. **Provide credentials:**
    ```sh
-    docker-compose up -d
+   cp .env.example .env
    ```
+   Edit `.env` and set a real `DATABASE_POSTGRES_PASSWORD`. `.env` is
+   git-ignored; nothing you put there is ever committed. Compose reads it both
+   to fill in the application's database configuration and to set the local
+   Postgres container's own password from the same value, so it only needs to
+   be set once.
 
-3. **Accessing the Application:**
-   The application will be accessible at `http://localhost:8080`.
-
-4. **Accessing API Documentation:
-   The Swagger UI for the API documentation can be accessed at http://localhost:8080/swagger-ui/index.html. This provides a visual interface for all the RESTful endpoints in your application.
-
-5. **Stopping the Application:**
-   To stop the application and remove the containers, use:
+3. **Build and start the stack, waiting for both services to be healthy:**
    ```sh
-    docker-compose down
+   docker compose up --build --wait
    ```
+   `--wait` blocks until the application's `/actuator/health` check and
+   Postgres's `pg_isready` check both pass, so the command only returns once
+   the stack is actually usable - not just started.
+
+4. **Access the application:**
+   `http://localhost:8080`. The Swagger UI is at
+   `http://localhost:8080/swagger-ui/index.html`.
+
+5. **Access Postgres from the host, if you need to** (a database client, a
+   manual query): it is bound to `127.0.0.1:5432`, reachable from your machine
+   but from nowhere else on the network.
+
+6. **Stop the stack:**
+   ```sh
+   docker compose down
+   ```
+   The application container handles `SIGTERM` directly (an exec-form
+   entrypoint, and `server.shutdown: graceful` in `application.yml`), so
+   in-flight requests are given a chance to finish rather than being cut off.
+
+### A note on the committed `.env.example` value
+
+`.env.example`'s `DATABASE_POSTGRES_PASSWORD` is a placeholder
+(`change-me-locally`), never a real credential, and is meant to be overridden
+in your own `.env` before starting the stack. If a *real* password was ever
+reused across environments starting from an earlier version of this
+repository, rotate it: a value that once existed in git history should be
+treated as compromised even after being removed from the working tree.
 
 ## Runtime profiles
 

@@ -1,0 +1,38 @@
+# Git metadata and history: never needed inside the image, and large.
+.git
+.gitignore
+
+# Build tooling caches and output. The image builds fresh with the wrapper.
+.gradle
+build
+out
+*.iml
+.idea
+
+# IDE and editor files.
+.vscode
+.settings
+.classpath
+.project
+
+# Secrets and local-only configuration. .env.example is intentionally
+# committed and harmless, so it is not excluded.
+.env
+.env.*
+!.env.example
+
+# Documentation, tooling config, and CI: irrelevant to the runtime image and
+# not needed to produce it.
+docs
+.postman
+.claude
+.github
+README.md
+
+# Not copied into the image; docker-compose mounts this directly from the
+# host into the postgres container.
+db-scripts
+
+# The Docker files themselves never need to be inside the image they build.
+Dockerfile
+docker-compose*.yml

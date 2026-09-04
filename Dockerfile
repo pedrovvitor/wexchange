@@ -1,19 +1,39 @@
-# build stage
-FROM gradle:8.4-jdk17-alpine AS builder
+# syntax=docker/dockerfile:1
 
-WORKDIR /usr/app/
+# ---- build stage -----------------------------------------------------------
+# The wrapper, not a global Gradle install: the version and checksum that get
+# used are exactly the ones committed to this repository.
+FROM eclipse-temurin:17-jdk-alpine AS builder
 
-COPY . .
+WORKDIR /workspace
 
-RUN gradle bootJar
+# Copied ahead of the source tree so dependency resolution is cached across
+# source-only changes; only build.gradle/settings.gradle changing invalidates it.
+COPY gradlew build.gradle settings.gradle lombok.config ./
+COPY gradle ./gradle
+RUN ./gradlew --version --no-daemon
 
-# build runtime
-FROM openjdk:17-jdk-alpine
+COPY src ./src
 
-COPY --from=builder /usr/app/build/libs/*.jar /opt/app/application.jar
+RUN ./gradlew bootJar --no-daemon
+
+# ---- runtime stage ----------------------------------------------------------
+# A JRE, not a JDK: nothing here compiles anything.
+FROM eclipse-temurin:17-jre-alpine
+
+RUN addgroup -S wexchange && adduser -S wexchange -G wexchange
+WORKDIR /opt/app
+COPY --from=builder --chown=wexchange:wexchange /workspace/build/libs/*.jar application.jar
+USER wexchange
 
 # The application activates no profile of its own. Choose one explicitly here,
 # and override it per environment with SPRING_PROFILES_ACTIVE.
 ENV SPRING_PROFILES_ACTIVE=production
 
-CMD java -jar /opt/app/application.jar
+EXPOSE 8080
+
+# Exec form, deliberately: as PID 1 this receives SIGTERM directly rather than
+# a shell wrapping it, which is what lets server.shutdown=graceful (see
+# application.yml) actually run instead of the JVM being hard-killed after the
+# container runtime's grace period.
+ENTRYPOINT ["java", "-jar", "/opt/app/application.jar"]

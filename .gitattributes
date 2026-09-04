@@ -1,0 +1,13 @@
+# gradlew is a POSIX shell script executed directly (./gradlew, and the
+# Dockerfile's `RUN ./gradlew`). A CRLF checkout breaks its shebang under any
+# strict /bin/sh - Alpine's BusyBox ash included - with "gradlew: not found",
+# because the interpreter path becomes "/bin/sh\r". The committed blob is LF;
+# this file is what keeps every checkout that way, including a Windows one
+# with core.autocrlf=true.
+#
+# Scoped to the wrapper only, deliberately: a blanket `* text=auto eol=lf`
+# would renormalize every other tracked file's line endings too, which is
+# unrelated to this fix and would show up as unrelated churn.
+gradlew text eol=lf
+gradlew.bat text eol=crlf
+gradle/wrapper/gradle-wrapper.jar binary
