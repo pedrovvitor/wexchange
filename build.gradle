@@ -39,9 +39,9 @@ java {
 // ---------------------------------------------------------------------------
 
 /*
- * Behavioural core of the application: use cases, application services, and the
- * monetary/conversion rules. Issue #15 relocates these into explicit domain and
- * application packages; these lists move with them and are never relaxed.
+ * Behavioural core of the application: the domain rules and the use cases that
+ * orchestrate them, plus the outbound adapters that were held to the same bar
+ * before issue #15 gave them their own packages.
  *
  * JaCoCo matches a PACKAGE element against the full package name, and its `.*`
  * suffix requires at least one further segment. Each package is therefore listed
@@ -49,19 +49,20 @@ java {
  * that package silently unverified.
  */
 ext.domainApplicationCoveragePackages = [
-        'com.pedrolima.wexchange.usecases',
-        'com.pedrolima.wexchange.usecases.*',
-        'com.pedrolima.wexchange.services',
-        'com.pedrolima.wexchange.services.*',
-        'com.pedrolima.wexchange.utils',
-        'com.pedrolima.wexchange.utils.*',
+        'com.pedrolima.wexchange.domain',
+        'com.pedrolima.wexchange.domain.*',
+        'com.pedrolima.wexchange.application',
+        'com.pedrolima.wexchange.application.*',
+        // The adapters were held to this bar before issue #15 split them out of
+        // `services` and `utils`. They stay held to it.
+        'com.pedrolima.wexchange.adapter.*',
 ]
 
 /* PIT globs treat `*` as matching any characters, package separators included. */
 ext.domainApplicationClasses = [
-        'com.pedrolima.wexchange.usecases.*',
-        'com.pedrolima.wexchange.services.*',
-        'com.pedrolima.wexchange.utils.*',
+        'com.pedrolima.wexchange.domain.*',
+        'com.pedrolima.wexchange.application.*',
+        'com.pedrolima.wexchange.adapter.out.*',
 ]
 
 /*
@@ -81,12 +82,15 @@ ext.coverageExclusions = [
 
 /*
  * Critical financial rules. Mutation testing must leave no survivor here:
- * rounding and the conversion window live in ConversionUtils, rate selection
- * lives in DefaultConvertPurchaseUseCase.
+ * money and rounding, the conversion window, rate application, purchase
+ * invariants, and rate selection.
  */
 ext.criticalRuleClasses = [
-        'com.pedrolima.wexchange.utils.ConversionUtils',
-        'com.pedrolima.wexchange.usecases.purchase.convert.DefaultConvertPurchaseUseCase',
+        'com.pedrolima.wexchange.domain.money.Money',
+        'com.pedrolima.wexchange.domain.exchange.ConversionWindow',
+        'com.pedrolima.wexchange.domain.exchange.ExchangeRate',
+        'com.pedrolima.wexchange.domain.purchase.Purchase',
+        'com.pedrolima.wexchange.application.ConvertPurchaseService',
 ]
 
 dependencies {

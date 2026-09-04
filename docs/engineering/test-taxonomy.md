@@ -15,7 +15,7 @@ a number drift and the weaker one wins.
 | --- | --- | --- | --- |
 | Unit | `src/test/java` | `unitTest` (alias for `test`) | One class or one rule, collaborators stubbed, no Spring context. |
 | Integration | `src/integrationTest/java` | `integrationTest` | Several real components together: controller plus validation plus JSON plus error mapping; later, PostgreSQL through Testcontainers (#5) and stubbed provider HTTP (#3). |
-| Architecture | `src/architectureTest/java` | `architectureTest` | ArchUnit fitness functions over compiled production and test classes. |
+| Architecture | `src/architectureTest/java` | `architectureTest` | ArchUnit fitness functions over compiled production and test classes, plus the boundary fixtures below. |
 
 `unitTest` is a lifecycle alias rather than a second `Test` task, so the suite is
 never executed twice in one build. Use whichever name reads better; `check` runs
@@ -26,8 +26,10 @@ The architecture suite reads the other suites' compiled output, so it depends on
 
 ### Naming
 
-- Test classes mirror the class under test: `ConversionUtils` →
-  `ConversionUtilsTest`. Integration tests end in `IT`.
+- Test classes mirror the class under test: `Money` → `MoneyTest`. Integration
+  tests end in `IT`. Tests live in the same package as their subject, which is
+  also what lets the boundary fixtures below sit inside `domain` and
+  `application`.
 - Test methods read `given<Situation>_when<Action>_then<ObservableOutcome>`.
 - Prefer `@DisplayName` sentences on anything whose intent is not obvious from
   the method name. The failure line should tell a reviewer what broke without
@@ -36,8 +38,9 @@ The architecture suite reads the other suites' compiled output, so it depends on
 
 ### Fixtures
 
-- Build fixtures with the production factory methods (`PurchaseJpaEntity.newPurchase`,
-  `CountryCurrencyJpaEntity.with`) so a change to construction rules surfaces here.
+- Build fixtures with the production factory methods (`Purchase.create`,
+  `Money.of`, `PurchaseJpaEntity.newPurchase`) so a change to construction rules
+  surfaces here.
 - Money and rates are written as exact `BigDecimal` string literals. Never
   `double`, and never `BigDecimal.valueOf` on a literal where the scale matters:
   a test that uses binary floating point can pass against a wrong implementation.
@@ -51,6 +54,20 @@ The architecture suite reads the other suites' compiled output, so it depends on
   Assert the constraint annotation that fired instead - it is stable, and it is
   the stronger claim.
 - Country-currency fixtures use synthetic values. No production data, ever.
+
+### Boundary fixtures
+
+`HexagonalBoundariesTest` checks each rule twice: once against production code,
+where it must pass, and once against a class written to break it, where it must
+fail. `InwardDependencyFixture` and `SpringInDomainFixture` live in the
+architectureTest source set inside `application` and `domain` respectively, so
+the rules can actually reach them.
+
+They are not mistakes and must not be "fixed". A green build on those two tests
+would mean a rule had quietly stopped matching anything — which is how a gate
+ends up enforcing nothing while reporting success. Production classes are
+imported by path from `build/classes/java/main`, so the fixtures can never leak
+into the set the real assertions run against.
 
 ### Offline guarantee
 
@@ -66,10 +83,10 @@ the build if it finds one. Outbound HTTP in production goes through an injected
 | --- | --- | --- |
 | Formatting | `spotlessCheck` / `spotlessApply` | Import order, unused imports, indentation, trailing whitespace, final newline. Config: `config/spotless/wexchange.importorder`. |
 | Static analysis | `pmdBaselineVerification` | No PMD violation outside `config/pmd/baseline.txt`. Rules: `config/pmd/ruleset.xml` (production), `config/pmd/ruleset-test.xml` (tests). |
-| Coverage, behavioural core | `jacocoTestCoverageVerification` | 90% line, 85% branch, **per package**, for `usecases`, `services`, `utils` and their subpackages. |
+| Coverage, behavioural core | `jacocoTestCoverageVerification` | 90% line, 85% branch, **per package**, for `domain`, `application`, and the adapters. |
 | Coverage, whole artefact | `jacocoTestCoverageVerification` | 80% line, 70% branch across the production bundle. |
 | Mutation | `mutationTest` | Mutation score ≥ 80%, test strength ≥ 90% over the behavioural core. |
-| Critical financial rules | `pitestCriticalRulesVerification` | **Zero** surviving mutants in `ConversionUtils` and `DefaultConvertPurchaseUseCase`. No exemption list exists, and the task also fails if PIT produced no mutant for those classes at all. |
+| Critical financial rules | `pitestCriticalRulesVerification` | **Zero** surviving mutants in `Money`, `ConversionWindow`, `ExchangeRate`, `Purchase`, and `ConvertPurchaseService`. No exemption list exists, and the task also fails if PIT produced no mutant for those classes at all. |
 | Everything | `check` | All of the above, plus all three suites. |
 
 The behavioural-core rule is evaluated per package, not as one aggregate, so a
@@ -105,14 +122,18 @@ gone. It held two `@Value` field injections; issue #1 replaced them with
 constructor injection, so the store emptied and was deleted in the same change.
 That is what the ratchet is for, and what it looks like when it works.
 
-Seven mutants survive, all in `services.async` and `services.scheduled`, none in
-the critical financial rules:
+Seventeen mutants survive, none in the critical financial rules:
 
-- three `StopWatch::stop` removals. commons-lang3 reports elapsed time on a
-  running watch, and the only consumer of `formatTime()` is a debug log, so
-  nothing observable changes;
+- nine in the persistence entities' `equals`/`hashCode`. `ExchangeRateCompositeKey`
+  is a JPA `@IdClass` with no setters, so a unit test cannot build two keys that
+  differ; three of these are reported as `NO_COVERAGE` for that reason. Issue #5
+  brings Testcontainers, which is where that identity contract can finally be
+  exercised against a real Hibernate session;
 - four in the two `getRetryCount()` helpers, whose value only ever reaches a log
-  message.
+  message;
+- four `StopWatch::stop` removals. commons-lang3 reports elapsed time on a
+  running watch, and the only consumer of `formatTime()` is a debug log, so
+  nothing observable changes.
 
 They are counted against the score rather than suppressed, and the suite clears
 both thresholds with them included.
@@ -120,7 +141,7 @@ both thresholds with them included.
 The critical financial rules are held to a stricter standard than a score: every
 mutant PIT generates for them must die, with no exemption list. When a mutant
 there proves unkillable, the answer is to restructure the code so it is never
-generated, not to record it. `DefaultConvertPurchaseUseCase.describeAmbiguity`
+generated, not to record it. `ConvertPurchaseService.describeAmbiguity`
 is written as concatenation rather than `String.formatted` for exactly this
 reason: a varargs call carries an array-length constant that `INLINE_CONSTS` can
 widen without altering the message, and no assertion could distinguish that.
