@@ -1,12 +1,10 @@
-version: '3.8'
-
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
     env_file:
-        - .env.local
+      - .env
     environment:
       # Explicit, and overriding whatever the image was built with. The
       # application no longer picks a profile for you.
@@ -15,22 +13,43 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - wexchange_network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    # This is the production-like profile: bounded so a runaway local
+    # container cannot exhaust the host, and so the numbers here are a real
+    # rehearsal of a deployment budget rather than "however much is free."
+    mem_limit: 512m
+    cpus: "1.0"
 
   postgres:
-    image: postgres:latest
+    image: postgres:16-alpine
     container_name: wexchange_postgres
     environment:
-      POSTGRES_PASSWORD: SomeSecuredPassword
+      POSTGRES_PASSWORD: ${DATABASE_POSTGRES_PASSWORD:?DATABASE_POSTGRES_PASSWORD must be set; copy .env.example to .env first}
       POSTGRES_DB: wexchange
     volumes:
       - ./db-scripts:/docker-entrypoint-initdb.d
     ports:
-      - "5432:5432"
+      # Loopback only, never 0.0.0.0: reachable from the host for a local
+      # psql/DBeaver session, never from the rest of the network.
+      - "127.0.0.1:5432:5432"
     networks:
       - wexchange_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d wexchange"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    mem_limit: 512m
+    cpus: "1.0"
 
 networks:
   wexchange_network:
