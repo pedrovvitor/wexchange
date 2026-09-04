@@ -8,9 +8,6 @@ import org.springframework.data.repository.query.Param;
 
 public interface CountryCurrencyRepository extends JpaRepository<CountryCurrencyJpaEntity, String> {
 
-    @Query("SELECT CASE WHEN COUNT(c) > 0 THEN false ELSE true END FROM CountryCurrencyJpaEntity c WHERE c.countryCurrency = ?1")
-    boolean notExistsByCountryCurrency(String countryCurrency);
-
     @Query("SELECT c FROM CountryCurrencyJpaEntity c WHERE LOWER(c.countryCurrency) LIKE LOWER(CONCAT('%', :country_currency, '%'))")
     Page<CountryCurrencyJpaEntity> findAllContainingCountryCurrencyIgnoreCase(Pageable pageable, @Param("country_currency") String countryCurrency);
 }

@@ -33,9 +33,6 @@ class PersistenceConstraintsIT extends AbstractPostgresRepositoryIT {
     private PurchaseRepository purchaseRepository;
 
     @Autowired
-    private CountryCurrencyRepository countryCurrencyRepository;
-
-    @Autowired
     private ExchangeRateRepository exchangeRateRepository;
 
     /*
@@ -126,10 +123,5 @@ class PersistenceConstraintsIT extends AbstractPostgresRepositoryIT {
                 .orElseThrow();
 
         assertEquals(new BigDecimal("1.005"), reloaded.getRateValue());
-    }
-
-    @Test
-    void givenNoStoredCountryCurrency_whenCheckingExistence_thenItReportsNotExisting() {
-        assertTrue(countryCurrencyRepository.notExistsByCountryCurrency("Never-Stored"));
     }
 }

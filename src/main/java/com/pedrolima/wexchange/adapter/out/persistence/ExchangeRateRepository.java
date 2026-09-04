@@ -10,13 +10,6 @@ import java.util.Optional;
 
 public interface ExchangeRateRepository extends JpaRepository<ExchangeRateJpaEntity, ExchangeRateCompositeKey> {
 
-    @Query("SELECT COUNT(c) = 0 FROM ExchangeRateJpaEntity c WHERE c.countryCurrency = :countryCurrency AND c.effectiveDate "
-            + "= :effectiveDate")
-    boolean notExistsByCountryCurrencyAndEffectiveDate(
-            @Param("countryCurrency") String countryCurrency,
-            @Param("effectiveDate") LocalDate effectiveDate
-    );
-
     /**
      * Every distinct country-currency with at least one eligible rate whose
      * descriptor contains the search term, case-insensitively.
