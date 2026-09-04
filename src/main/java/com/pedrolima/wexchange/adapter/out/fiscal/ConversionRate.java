@@ -10,10 +10,4 @@ public record ConversionRate(
         @JsonProperty("effective_date") LocalDate effectiveDate,
         @JsonProperty("country_currency_desc") String countryCurrency
 ) {
-    public static ConversionRate with(
-            final BigDecimal anExchangeRate,
-            final LocalDate anEffectiveDate,
-            final String aCountryCurrency) {
-        return new ConversionRate(anExchangeRate, anEffectiveDate, aCountryCurrency);
-    }
 }

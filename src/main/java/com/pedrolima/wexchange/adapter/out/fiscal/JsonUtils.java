@@ -9,6 +9,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 public class JsonUtils {
 
@@ -22,5 +23,16 @@ public class JsonUtils {
         JavaType type = TypeFactory.defaultInstance().constructCollectionType(List.class, clazz);
 
         return OBJECT_MAPPER.readValue(dataArray.toString(), type);
+    }
+
+    /**
+     * The JSON:API {@code links.next} URL, when the provider's response
+     * declares one. Centralizing this here, alongside {@link #extractDataList},
+     * is what lets one pagination loop serve every fiscal endpoint.
+     */
+    public static Optional<String> extractNextPageUrl(final String json) throws IOException {
+        JsonNode rootNode = OBJECT_MAPPER.readTree(json);
+        JsonNode next = rootNode.path("links").path("next");
+        return next.isTextual() ? Optional.of(next.asText()) : Optional.empty();
     }
 }

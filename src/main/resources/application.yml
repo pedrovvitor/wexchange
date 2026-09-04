@@ -39,6 +39,23 @@ fiscal:
   service:
     api:
       endpoint: "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/od/rates_of_exchange"
+  client:
+    connect-timeout: 2s
+    request-timeout: 5s
+    total-deadline: 15s
+    max-response-bytes: 5242880 # 5 MiB
+    max-concurrent-calls: 4
+    max-attempts: 4
+    initial-backoff: 200ms
+    backoff-multiplier: 2.0
+    jitter-factor: 0.5
+    retryable-status-codes: 429,502,503,504
+    max-pages: 20
+    circuit-breaker:
+      failure-rate-threshold: 50
+      sliding-window-size: 20
+      wait-duration-in-open-state: 30s
+      permitted-calls-in-half-open-state: 5
 management:
   endpoints:
     web:

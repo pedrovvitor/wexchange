@@ -3,11 +3,14 @@ package com.pedrolima.wexchange.bootstrap;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.pedrolima.wexchange.adapter.in.web.CreatePurchaseApiInput;
+import com.pedrolima.wexchange.adapter.out.fiscal.FiscalClientProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.net.http.HttpClient;
+import java.time.Duration;
 import java.time.LocalDate;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -50,11 +53,15 @@ class SerializationAndHttpClientConfigTest {
     }
 
     @Test
-    @DisplayName("the outbound HTTP client follows redirects")
-    void givenConfiguredHttpClient_whenInspectingRedirectPolicy_thenRedirectsAreFollowed() {
-        final var httpClient = new HttpClientConfig().httpClient();
+    @DisplayName("the outbound HTTP client never follows redirects automatically")
+    void givenConfiguredHttpClient_whenInspectingRedirectPolicy_thenRedirectsAreNotFollowed() {
+        final var properties = new FiscalClientProperties(
+                Duration.ofSeconds(2), null, null, 0, 0, 0, null, 0, 0, Set.of(), 0, null);
+
+        final var httpClient = new HttpClientConfig().httpClient(properties);
 
         assertNotNull(httpClient);
-        assertEquals(HttpClient.Redirect.ALWAYS, httpClient.followRedirects());
+        assertEquals(HttpClient.Redirect.NEVER, httpClient.followRedirects());
+        assertEquals(Duration.ofSeconds(2), httpClient.connectTimeout().orElseThrow());
     }
 }

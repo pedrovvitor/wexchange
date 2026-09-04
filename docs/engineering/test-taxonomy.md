@@ -144,7 +144,7 @@ out of date.
 
 | Baseline | Contents | Owner |
 | --- | --- | --- |
-| `config/pmd/baseline.txt` | Five `PreserveStackTrace` violations: exceptions rethrown in a catch block without the original cause. | #3, #7 |
+| `config/pmd/baseline.txt` | Three `PreserveStackTrace` violations: a new exception is thrown in a catch block via a derived cause (or, in `HttpFiscalDataClient`, a helper that itself chains it), which PMD's static check cannot see through - the trace is not actually lost. | #3, #7 |
 
 The ArchUnit violation store that used to sit in `config/archunit/frozen/` is
 gone. It held two `@Value` field injections; issue #1 replaced them with

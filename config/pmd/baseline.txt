@@ -6,10 +6,11 @@
 # gains a violation, and equally when it loses one without the entry being
 # removed here. Never add a line to make a new change pass; fix the violation.
 #
-# PreserveStackTrace: five call sites raise a new exception inside a catch block
-# without passing the original as the cause, so the upstream failure reason is
-# lost from the logs. Owned by #3 (Fiscal Data client) and #7 (HTTP contract);
-# RetryableException already has an unused (message, cause) constructor.
-PreserveStackTrace|src/main/java/com/pedrolima/wexchange/adapter/out/fiscal/ExchangeRateService.java|1
-PreserveStackTrace|src/main/java/com/pedrolima/wexchange/adapter/out/fiscal/CountryCurrencyUpdaterService.java|2
+# PreserveStackTrace: call sites raise a new exception inside a catch block
+# using the caught exception's *cause* (or, for CustomLocalDateDeserializer,
+# construct a new exception around it) rather than passing the caught
+# exception itself - the real stack trace is still chained in, but PMD's
+# static check cannot see through that indirection. Owned by #3 (Fiscal Data
+# client) and #7 (HTTP contract).
+PreserveStackTrace|src/main/java/com/pedrolima/wexchange/adapter/out/fiscal/HttpFiscalDataClient.java|1
 PreserveStackTrace|src/main/java/com/pedrolima/wexchange/adapter/in/web/CustomLocalDateDeserializer.java|2
