@@ -1,29 +1,184 @@
-name: Java Build and Test Pipeline
+name: CI
 
-on: [ push, pull_request ]
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+# A newer push on the same branch/PR supersedes an older run rather than
+# queuing behind it - a runner is not spent proving an already-stale commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Read-only by default (issue #10): only the one job that genuinely needs a
+# write (the dependency-review PR comment) elevates its own permissions,
+# rather than every job inheriting a broader default.
+permissions:
+  contents: read
 
 jobs:
-  build:
+  wrapper-validation:
+    name: Validate Gradle wrapper
     runs-on: ubuntu-22.04
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+
+  build:
+    name: Build, test, and verify quality gates
+    needs: wrapper-validation
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up JDK 17
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
         with:
           distribution: 'temurin'
           java-version: '17'
-      - name: Grant execute permission for gradlew
-        run: chmod +x ./gradlew
-      - name: Cache Gradle packages
-        uses: actions/cache@v6
+      # Caches Gradle's own dependency/build caches and provisions the
+      # toolchain JDK the build.gradle Java toolchain declares - replaces the
+      # previous manual actions/cache step, which only cached
+      # ~/.gradle/caches and ~/.gradle/wrapper and knew nothing about
+      # toolchain-provisioned JDKs.
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      # One canonical pipeline (issue #10): `check` already runs the unit,
+      # integration, and architecture suites plus every quality gate in
+      # docs/engineering/test-taxonomy.md. A separate `test` invocation
+      # after `build` (which already depends on `check`) previously ran the
+      # same suite twice for no reason.
+      - name: Run the complete quality gate
+        run: ./gradlew check
+      - name: Publish test and quality reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
+          name: quality-reports
           path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-      - name: Build with Gradle
-        run: ./gradlew build
-      - name: Run tests
-        run: ./gradlew test
+            build/reports/tests
+            build/reports/jacoco
+            build/reports/pitest
+            build/reports/pmd
+            build/test-results
+          retention-days: 14
+          if-no-files-found: warn
+
+  secret-scan:
+    name: Scan for committed secrets
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # gitleaks diff-scans a PR against its base; a shallow clone has no base commit to diff against
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependency-review:
+    name: Review dependency changes for known vulnerabilities
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write # only this job needs it, to post the PR summary comment
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          # Documented policy (issue #10 acceptance criteria): high or
+          # critical severity fails the pull request.
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure
+
+  container:
+    name: Build image, smoke test, SBOM, and vulnerability scan
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: ci-smoke-test-password
+          POSTGRES_DB: wexchange
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d wexchange"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build the runtime image
+        run: docker build -t wexchange:ci-${{ github.sha }} .
+
+      - name: Run the built image against the service Postgres
+        run: |
+          docker run -d --name wexchange-smoke \
+            --network host \
+            -e SPRING_PROFILES_ACTIVE=production \
+            -e DATABASE_POSTGRES_URL=jdbc:postgresql://localhost:5432/wexchange \
+            -e DATABASE_POSTGRES_USERNAME=postgres \
+            -e DATABASE_POSTGRES_PASSWORD=ci-smoke-test-password \
+            wexchange:ci-${{ github.sha }}
+
+      - name: Wait for the API to report healthy
+        run: |
+          for i in $(seq 1 30); do
+            if curl --fail --silent http://localhost:8080/actuator/health; then
+              echo
+              echo "Healthy after ${i} attempt(s)."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::The container never reported healthy within the smoke-test window."
+          docker logs wexchange-smoke
+          exit 1
+
+      - name: Smoke-test one real API call
+        run: |
+          status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            "http://localhost:8080/v1/country_currencies?page=0&size=1")
+          echo "GET /v1/country_currencies -> ${status}"
+          test "${status}" -eq 200
+
+      - name: Container logs (always, for diagnosis)
+        if: always()
+        run: docker logs wexchange-smoke || true
+
+      - name: Stop the smoke-test container
+        if: always()
+        run: docker rm -f wexchange-smoke || true
+
+      - name: Generate a CycloneDX SBOM for the built image
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        with:
+          image: wexchange:ci-${{ github.sha }}
+          format: cyclonedx-json
+          output-file: sbom.cyclonedx.json
+
+      - name: Publish the SBOM
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sbom
+          path: sbom.cyclonedx.json
+          retention-days: 90
+
+      - name: Scan the built image for known vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: wexchange:ci-${{ github.sha }}
+          # Documented policy (issue #10 acceptance criteria): high or
+          # critical severity fails the build. Unfixed OS-package findings
+          # with no available patch are not exempted from this - the image
+          # base is expected to be bumped (Dependabot tracks it) rather than
+          # the finding suppressed.
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: false
