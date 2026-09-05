@@ -1,0 +1,18 @@
+title = "Wexchange gitleaks config"
+
+# Extends gitleaks' own default ruleset (issue #10) rather than replacing it -
+# this file only narrows two specific, verified false positives; it must
+# never be used to exempt a real secret. See
+# docs/engineering/secret-scanning.md for the remediation flow a genuine
+# finding follows.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Verified false positives: test fixture literals the generic-api-key rule mistakes for a secret because of their entropy, not because they are one"
+paths = [
+  '''src/integrationTest/java/com/pedrolima/wexchange/adapter/out/persistence/PurchaseIdempotencyStoreAdapterIT\.java''',
+]
+regexes = [
+  '''purchase-\d+''',
+]
