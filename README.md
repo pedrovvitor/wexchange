@@ -1,4 +1,14 @@
-# wexchange Application
+# Wexchange — Historical purchase conversion
+
+> **Status: work in progress.** A portfolio project for local development, with no hosted deployment or production-readiness claim. Current limitations and implementation work are tracked in the [roadmap](https://github.com/pedrovvitor/wexchange/issues/13).
+
+A Java 17 / Spring Boot API that records synthetic USD purchases and converts them using historical US Treasury exchange rates. The engineering focus is monetary correctness, idempotent writes, bounded upstream failures, and PostgreSQL persistence.
+
+- Hexagonal boundaries verified with ArchUnit.
+- Unit and PostgreSQL integration tests, coverage gates, and PIT mutation testing for financial rules.
+- Versioned [OpenAPI contract](docs/openapi/wexchange-v1.yaml) and documented [architecture decisions](docs/adr/).
+- Anonymous demo data only; no real financial or personal information. Dependency upgrades and a deterministic offline demo remain in the backlog.
+
 
 ## Running the Application with Docker
 
@@ -32,8 +42,12 @@
    the stack is actually usable - not just started.
 
 4. **Access the application:**
-   `http://localhost:8080`. The Swagger UI is at
-   `http://localhost:8080/swagger-ui/index.html`.
+   The API is at `http://localhost:8080`. This Compose stack selects the
+   `production` configuration profile, which disables Swagger UI; the profile
+   name does not imply a deployed or production-ready service. Use the
+   [versioned API contract](docs/openapi/wexchange-v1.yaml) to explore its routes.
+   Swagger UI is available at `/swagger-ui/index.html` when explicitly running
+   the `development` profile.
 
 5. **Access Postgres from the host, if you need to** (a database client, a
    manual query): it is bound to `127.0.0.1:5432`, reachable from your machine
@@ -130,4 +144,4 @@ each threshold is and which task owns it.
 
 - Ensure that your PostgreSQL container is running and accessible.
 - The application uses port 8080, so make sure this port is not already in use on your machine.
-- The docker-compose up --build command will build the Docker image for your application using the Dockerfile. It's important to build the JAR file before running this command, as the Dockerfile copies the JAR into the image.
+- `docker compose up --build` builds the JAR inside the multi-stage Dockerfile; a separate local JAR build is not required.
