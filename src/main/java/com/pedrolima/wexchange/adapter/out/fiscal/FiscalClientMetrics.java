@@ -6,10 +6,12 @@ import io.github.resilience4j.retry.Retry;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.binder.jvm.ExecutorServiceMetrics;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -59,5 +61,17 @@ public class FiscalClientMetrics {
 
     void incrementSchemaRejection() {
         Counter.builder(PREFIX + "schema.rejected.count").register(meterRegistry).increment();
+    }
+
+    /**
+     * Wraps the total-deadline executor with pool-size gauges and per-task
+     * timings (issue #9's "worker" metrics) under Micrometer's own standard
+     * {@code executor.*} names, tagged with {@code name}, rather than this
+     * class's own {@value #PREFIX} - a different, unrelated naming scheme
+     * that every other metric here shares because it names fiscal-provider
+     * outcomes specifically, not generic JVM executor state.
+     */
+    ExecutorService monitorExecutor(final ExecutorService executor, final String name) {
+        return ExecutorServiceMetrics.monitor(meterRegistry, executor, name);
     }
 }

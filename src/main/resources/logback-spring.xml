@@ -1,7 +1,17 @@
 <configuration>
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} [traceId=%X{traceId}] - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Production only: one JSON object per stdout line rather than the
+         plain-text pattern above, so any log aggregator can parse a field
+         (including the traceId already in MDC, from TraceIdFilter) without a
+         regex (issue #9). -->
+    <appender name="STDOUT_JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"application":"wexchange"}</customFields>
         </encoder>
     </appender>
 
@@ -14,7 +24,7 @@
         <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
             <file>logs/wexchange.log</file>
             <encoder>
-                <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} [traceId=%X{traceId}] - %msg%n</pattern>
             </encoder>
             <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
                 <fileNamePattern>logs/myapp-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
@@ -33,7 +43,7 @@
 
     <springProfile name="production">
         <root level="INFO">
-            <appender-ref ref="STDOUT"/>
+            <appender-ref ref="STDOUT_JSON"/>
         </root>
     </springProfile>
 </configuration>

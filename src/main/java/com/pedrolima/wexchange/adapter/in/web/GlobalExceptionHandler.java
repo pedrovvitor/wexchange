@@ -49,6 +49,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final URI PROBLEM_TYPE_BASE = URI.create("https://wexchange.pedrolima.com/problems/");
 
+    private final GlobalExceptionMetrics metrics;
+
+    public GlobalExceptionHandler(final GlobalExceptionMetrics metrics) {
+        this.metrics = metrics;
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     public ProblemDetail handleResourceNotFound(final ResourceNotFoundException ex, final WebRequest request) {
         return problem(HttpStatus.NOT_FOUND, "resource-not-found", ex.getMessage(), request);
@@ -131,6 +137,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         final var problemDetail = problem(HttpStatus.INTERNAL_SERVER_ERROR, "internal-error",
                 "An unexpected error occurred. Include the trace identifier when contacting support.",
                 request);
+        metrics.incrementUnmappedError();
         log.error("Unhandled exception, traceId={}", problemDetail.getProperties().get("traceId"), ex);
         return problemDetail;
     }

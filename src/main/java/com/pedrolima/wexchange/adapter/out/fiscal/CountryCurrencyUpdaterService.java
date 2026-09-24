@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.Duration;
 
 /**
  * Periodically synchronizes the set of known country currencies from the
@@ -51,7 +52,6 @@ public class CountryCurrencyUpdaterService {
     private final CountryCurrencySyncRunRepository lockRepository;
     private final CountryCurrencySyncRunTracker runTracker;
     private final FiscalDataClient fiscalDataClient;
-    private final MetricsHelper metricsHelper;
     private final CountryCurrencySyncMetrics syncMetrics;
     private final Clock clock;
 
@@ -60,7 +60,6 @@ public class CountryCurrencyUpdaterService {
             final CountryCurrencySyncRunRepository lockRepository,
             final CountryCurrencySyncRunTracker runTracker,
             final FiscalDataClient fiscalDataClient,
-            final MetricsHelper metricsHelper,
             final CountryCurrencySyncMetrics syncMetrics,
             final Clock clock
     ) {
@@ -68,7 +67,6 @@ public class CountryCurrencyUpdaterService {
         this.lockRepository = lockRepository;
         this.runTracker = runTracker;
         this.fiscalDataClient = fiscalDataClient;
-        this.metricsHelper = metricsHelper;
         this.syncMetrics = syncMetrics;
         this.clock = clock;
     }
@@ -96,8 +94,9 @@ public class CountryCurrencyUpdaterService {
             throw e;
         }
 
+        watch.stop();
         final var finishedAt = clock.instant();
-        metricsHelper.registryUpsertCountryCurrenciesElapsedTime(watch.getNanoTime());
+        syncMetrics.recordDuration(Duration.ofNanos(watch.getNanoTime()));
         runTracker.recordSuccess(startedAt, finishedAt);
         syncMetrics.recordSuccess(finishedAt);
         log.debug("Processing and saving all Country Currencies successfully. Elapsed time {}", watch.formatTime());

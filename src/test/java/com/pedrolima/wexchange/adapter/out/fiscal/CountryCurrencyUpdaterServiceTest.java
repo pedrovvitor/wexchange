@@ -21,9 +21,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -56,9 +54,6 @@ class CountryCurrencyUpdaterServiceTest {
     private FiscalDataClient fiscalDataClient;
 
     @Mock
-    private MetricsHelper metricsHelper;
-
-    @Mock
     private CountryCurrencySyncMetrics syncMetrics;
 
     private CountryCurrencyUpdaterService service;
@@ -66,7 +61,7 @@ class CountryCurrencyUpdaterServiceTest {
     @BeforeEach
     void setUp() {
         service = new CountryCurrencyUpdaterService(
-                upsertRepository, lockRepository, runTracker, fiscalDataClient, metricsHelper, syncMetrics,
+                upsertRepository, lockRepository, runTracker, fiscalDataClient, syncMetrics,
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
@@ -83,7 +78,7 @@ class CountryCurrencyUpdaterServiceTest {
         verify(runTracker).recordSuccess(NOW, NOW);
         verify(syncMetrics).recordSuccess(NOW);
         verify(syncMetrics, never()).recordFailure(any());
-        verify(metricsHelper, times(1)).registryUpsertCountryCurrenciesElapsedTime(anyLong());
+        verify(syncMetrics).recordDuration(any());
     }
 
     @Test
